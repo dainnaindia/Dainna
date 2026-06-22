@@ -24,14 +24,23 @@ async function main() {
     }
   }
 
-  // Delete other test users if they exist
+  // Delete other test users if they exist, catching errors for referenced users
   const testUsernames = ['staff', 'agent', 'adv', 'test_admin', 'test_staff', 'test_agent', 'test_adv'];
-  await prisma.user.deleteMany({
-    where: {
-      username: { in: testUsernames }
+  for (const username of testUsernames) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { username }
+      });
+      if (user) {
+        await prisma.user.delete({
+          where: { username }
+        });
+        console.log(`Cleaned up test user: ${username}`);
+      }
+    } catch (error) {
+      console.warn(`Could not clean up test user "${username}" (it may have active associations):`, error.message);
     }
-  });
-  console.log('Cleaned up previous test users from database');
+  }
 
   const users = [
     { username: 'admin', password: 'admin', userTypeId: 1, firstname: 'Test', surname: 'Admin', status: 1 }
