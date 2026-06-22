@@ -37,7 +37,8 @@ async function main() {
   // 3. Generate MariaDB Client
   console.log('Generating temporary MariaDB Prisma Client...');
   try {
-    execSync('npx prisma generate --schema=../../database/schema-mysql.prisma', { stdio: 'inherit', cwd: rootDir });
+    const cmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+    execSync(`${cmd} prisma generate --schema=../../database/schema-mysql.prisma`, { stdio: 'inherit', cwd: rootDir });
   } catch (err) {
     console.error('Failed to generate MariaDB client:', err);
     cleanup(tempSchemaPath);
@@ -48,9 +49,12 @@ async function main() {
   console.log('Connecting to databases...');
   const { PrismaClient: PrismaMysql } = require('./prisma/generated-mysql');
   const { PrismaClient: PrismaPostgres } = require('@prisma/client');
+  const { Pool } = require('pg');
+  const { PrismaPg } = require('@prisma/adapter-pg');
 
   const mysql = new PrismaMysql();
-  const pg = new PrismaPostgres();
+  let pgPool;
+  let pg;
 
   try {
     await mysql.$connect();
@@ -62,12 +66,23 @@ async function main() {
   }
 
   try {
+    const connectionString = process.env.DATABASE_URL;
+    pgPool = new Pool({
+      connectionString,
+      ssl: {
+        rejectUnauthorized: false,
+        servername: 'ep-muddy-wind-at711r6g.c-9.us-east-1.aws.neon.tech'
+      }
+    });
+    const adapter = new PrismaPg(pgPool);
+    pg = new PrismaPostgres({ adapter });
     await pg.$connect();
     console.log('[OK] Connected to PostgreSQL (Target)');
   } catch (err) {
-    console.error('[Error] Can\'t connect to PostgreSQL. Make sure it is running and tables are pushed.');
+    console.error('[Error] Can\'t connect to PostgreSQL:', err);
     cleanup(tempSchemaPath);
     await mysql.$disconnect();
+    if (pgClient) await pgClient.end();
     process.exit(1);
   }
 
@@ -94,10 +109,18 @@ async function main() {
   ];
 
   try {
-    // Disable triggers / constraints in PostgreSQL for safe batch inserts in any order
-    console.log('Temporarily disabling PostgreSQL constraint checks...');
-    await pg.$executeRawUnsafe("SET session_replication_role = 'replica';");
+    // Clear target tables in reverse dependency order (child tables first) to prevent foreign key errors
+    console.log('Clearing existing target PostgreSQL tables in reverse dependency order...');
+    for (const model of models.slice().reverse()) {
+      const prismaModelPg = pg[model.name.charAt(0).toLowerCase() + model.name.slice(1)];
+      if (prismaModelPg) {
+        console.log(`- Clearing table "${model.dbName}"...`);
+        await prismaModelPg.deleteMany();
+      }
+    }
 
+    // Migrate data in forward dependency order (parent tables first)
+    console.log('Migrating local data to PostgreSQL in dependency order...');
     for (const model of models) {
       const prismaModelMysql = mysql[model.name.charAt(0).toLowerCase() + model.name.slice(1)];
       const prismaModelPg = pg[model.name.charAt(0).toLowerCase() + model.name.slice(1)];
@@ -108,12 +131,18 @@ async function main() {
       }
 
       console.log(`Migrating table "${model.dbName}"...`);
-      const rows = await prismaModelMysql.findMany();
+      let rows = await prismaModelMysql.findMany();
       console.log(`- Found ${rows.length} rows in source.`);
 
       if (rows.length > 0) {
-        // Clear target table first
-        await prismaModelPg.deleteMany();
+        // Break circular dependency with User for state_master
+        if (model.name === 'state_master') {
+          rows = rows.map(r => ({
+            ...r,
+            addedby: null,
+            modifiedby: null
+          }));
+        }
 
         // Batch insert records
         const chunkSize = 200;
@@ -124,16 +153,13 @@ async function main() {
         console.log(`- Successfully inserted ${rows.length} rows.`);
       }
     }
-
-    // Re-enable triggers / constraints
-    console.log('Re-enabling PostgreSQL constraint checks...');
-    await pg.$executeRawUnsafe("SET session_replication_role = 'origin';");
     console.log('*** Migration completed successfully! ***');
   } catch (err) {
     console.error('[Error] Migration failed:', err);
   } finally {
     await mysql.$disconnect();
-    await pg.$disconnect();
+    if (pg) await pg.$disconnect();
+    if (pgPool) await pgPool.end().catch(() => {});
     cleanup(tempSchemaPath);
   }
 }
