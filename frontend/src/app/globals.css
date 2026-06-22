@@ -1,0 +1,303 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-805);
+  --color-slate-850: var(--slate-850);
+  --color-slate-855: var(--slate-855);
+  --color-slate-900: var(--slate-900);
+  --color-slate-950: var(--slate-950);
+}
+
+:root {
+  /* Default Dark Mode colors */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-805: #1e293b;
+  --slate-850: #151f32;
+  --slate-855: #151f32;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card-bg: #1e293b;
+  --border: #334155;
+  --text-muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+}
+
+.light {
+  /* Dynamic Light Mode colors */
+  --slate-50: #020617;
+  --slate-105: #0f172a;
+  --slate-100: #0f172a;
+  --slate-200: #1e293b;
+  --slate-300: #334155;
+  --slate-400: #475569;
+  --slate-500: #64748b;
+  --slate-600: #94a3b8;
+  --slate-700: #cbd5e1;
+  --slate-805: #e2e8f0;
+  --slate-850: #f1f5f9;
+  --slate-855: #f1f5f9;
+  --slate-900: #ffffff;
+  --slate-950: #f8fafc;
+
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text-muted: #64748b;
+
+  /* Dynamically map text-white to dark text for normal elements */
+  --color-white: var(--slate-100);
+}
+
+/* Maintain true white text color inside buttons, badges, and colored containers in light mode */
+.light button,
+.light a.btn,
+.light .btn,
+.light button *,
+.light .bg-blue-600,
+.light .bg-blue-600 *,
+.light .bg-blue-500,
+.light .bg-blue-500 *,
+.light .bg-emerald-600,
+.light .bg-emerald-600 *,
+.light .bg-emerald-500,
+.light .bg-emerald-500 *,
+.light .bg-green-600,
+.light .bg-green-600 *,
+.light .bg-red-600,
+.light .bg-red-600 *,
+.light .bg-red-500,
+.light .bg-red-500 *,
+.light .bg-rose-600,
+.light .bg-rose-600 *,
+.light .bg-rose-500,
+.light .bg-rose-500 *,
+.light .bg-indigo-600,
+.light .bg-indigo-600 *,
+.light .bg-indigo-500,
+.light .bg-indigo-500 *,
+.light [class*=" bg-blue-"], .light [class^="bg-blue-"],
+.light [class*=" bg-emerald-"], .light [class^="bg-emerald-"],
+.light [class*=" bg-red-"], .light [class^="bg-red-"],
+.light [class*=" bg-rose-"], .light [class^="bg-rose-"],
+.light [class*=" bg-indigo-"], .light [class^="bg-indigo-"],
+.light [class*=" bg-green-"], .light [class^="bg-green-"],
+.light [class*=" bg-purple-"], .light [class^="bg-purple-"] {
+  --color-white: #ffffff !important;
+}
+
+/* Ensure readable status text colors in light mode on screen */
+.light .text-red-400,
+.light .text-red-500 {
+  color: #dc2626 !important;
+}
+.light .text-emerald-400,
+.light .text-emerald-500 {
+  color: #16a34a !important;
+}
+.light .text-blue-400,
+.light .text-blue-500 {
+  color: #2563eb !important;
+}
+.light .text-amber-400,
+.light .text-amber-500 {
+  color: #b45309 !important;
+}
+.light .text-indigo-400,
+.light .text-indigo-500 {
+  color: #4f46e5 !important;
+}
+
+/* Form input styling overrides for premium light mode aesthetics */
+.light input,
+.light select,
+.light textarea {
+  color: var(--slate-100) !important;
+  background-color: var(--slate-950) !important;
+  border-color: var(--slate-805) !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.light select option {
+  background-color: var(--slate-900) !important;
+  color: var(--slate-100) !important;
+}
+
+/* Ensure clean transition properties on standard theme-affected attributes */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom Utilities for Premium Aesthetics */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gradient-card-hover {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+}
+
+.gradient-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Global scroll and boundary containment */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden !important;
+}
+
+/* Print styling utility overrides */
+@media print {
+  /* Hide all non-printable elements */
+  header, 
+  aside, 
+  nav, 
+  button, 
+  input, 
+  select, 
+  textarea, 
+  .no-print, 
+  .print\:hidden, 
+  .print-hidden,
+  [class*="no-print"],
+  [class*="print-hidden"] {
+    display: none !important;
+  }
+  
+  /* Hide columns containing checkboxes */
+  th:has(input[type="checkbox"]),
+  td:has(input[type="checkbox"]) {
+    display: none !important;
+  }
+
+  /* Reset document flow and containers */
+  html, body, #__next, [data-reactroot],
+  .flex, .flex-col, .flex-1, .h-screen, .h-full, 
+  .overflow-hidden, .overflow-y-auto, .overflow-x-auto, 
+  main, .p-6, .space-y-6, [class*="bg-slate-"], [class*="bg-zinc-"] {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    background: transparent !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    border-color: #e2e8f0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Force all text to black by default for readability on white paper */
+  h1, h2, h3, h4, h5, h6, p, span, div, li, a, td, th, label, strong {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+
+  /* Maintain readable status colors in print */
+  .text-emerald-400, .text-emerald-500, .bg-emerald-500\/10 {
+    color: #047857 !important; /* dark green */
+  }
+  .text-rose-400, .text-rose-500, .bg-rose-500\/10, .text-red-400, .text-red-500 {
+    color: #b91c1c !important; /* dark red */
+  }
+  .text-blue-400, .text-blue-500, .bg-blue-500\/10 {
+    color: #1d4ed8 !important; /* dark blue */
+  }
+  .text-amber-400, .text-amber-500, .bg-amber-500\/10 {
+    color: #b45309 !important; /* dark yellow/amber */
+  }
+  .text-indigo-400, .text-indigo-500, .bg-indigo-500\/10 {
+    color: #4338ca !important; /* dark indigo */
+  }
+
+  /* Organize tables for print */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
+    page-break-inside: auto !important;
+  }
+  
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 12px !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    background: transparent !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    font-weight: bold !important;
+    text-align: left !important;
+  }
+
+  /* Specific print cards (like details boxes) */
+  .print-card, [class*="rounded-xl"] {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    padding: 16px !important;
+    margin-bottom: 20px !important;
+    page-break-inside: avoid !important;
+    background: #ffffff !important;
+  }
+}

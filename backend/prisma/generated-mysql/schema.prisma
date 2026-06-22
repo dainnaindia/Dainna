@@ -1,0 +1,508 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../backend/prisma/generated-mysql"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = "mysql://root@127.0.0.1:3308/xenonerp_dainna"
+}
+
+model UserType {
+  userTypeId Int     @id @default(autoincrement()) @map("user_type_id")
+  userType   String? @unique @map("user_type") @db.VarChar(50)
+  users      User[]
+
+  @@map("user_type_master")
+}
+
+model User {
+  userId                                                               Int                      @id @default(autoincrement()) @map("user_id")
+  userTypeId                                                           Int?                     @map("user_type_id")
+  userCode                                                             Int?                     @map("user_code")
+  userCodeFull                                                         String?                  @map("user_code_full") @db.VarChar(255)
+  firstname                                                            String?                  @map("firstname") @db.VarChar(255)
+  middlename                                                           String?                  @map("middlename") @db.VarChar(255)
+  surname                                                              String?                  @map("surname") @db.VarChar(255)
+  firmname                                                             String?                  @map("firmname") @db.VarChar(255)
+  username                                                             String?                  @unique @map("username") @db.VarChar(255)
+  mobile                                                               String?                  @map("mobile") @db.VarChar(50)
+  email                                                                String?                  @map("email") @db.VarChar(50)
+  password                                                             String?                  @map("password") @db.VarChar(255)
+  address                                                              String?                  @map("address") @db.VarChar(255)
+  district                                                             String?                  @map("district") @db.VarChar(255)
+  city                                                                 String?                  @map("city") @db.VarChar(50)
+  stateId                                                              Int?                     @map("state_id")
+  postcode                                                             String?                  @map("postcode") @db.VarChar(8)
+  workingCity                                                          String?                  @map("working_city") @db.VarChar(255)
+  officePhone                                                          String?                  @map("office_phone") @db.VarChar(20)
+  aadharNo                                                             String?                  @map("aadhar_no") @db.VarChar(20)
+  sqId                                                                 Int?                     @map("sq_id")
+  securityAns                                                          String?                  @map("security_ans") @db.VarChar(255)
+  status                                                               Int?                     @default(0) @map("status")
+  photo                                                                String?                  @map("photo") @db.VarChar(255)
+  bankName                                                             String?                  @map("bank_name") @db.VarChar(255)
+  bankBranch                                                           String?                  @map("bank_branch") @db.VarChar(255)
+  bankIfscCode                                                         String?                  @map("bank_ifsc_code") @db.VarChar(255)
+  bankAcHolder                                                         String?                  @map("bank_ac_holder") @db.VarChar(255)
+  bankAcNo                                                             String?                  @map("bank_ac_no") @db.VarChar(255)
+  token                                                                String?                  @unique @map("token") @db.VarChar(255)
+  tokenExpires                                                         DateTime?                @map("token_expires")
+  wrongPwdCount                                                        Int?                     @default(0) @map("wrong_pwd_count")
+  emailVerified                                                        Int?                     @default(0) @map("email_verified")
+  emailVerifiedOn                                                      DateTime?                @map("email_verified_on")
+  mobileVerified                                                       Int?                     @default(0) @map("mobile_verified")
+  mobileVerifiedOn                                                     DateTime?                @map("mobile_verified_on")
+  ratePerSqmt                                                          Float?                   @map("rate_per_sqmt")
+  securePin                                                            String?                  @map("secure_pin") @db.VarChar(255)
+  termsAccept                                                          Int?                     @default(0) @map("terms_accept")
+  addedby                                                              Int?                     @map("addedby")
+  addeddate                                                            DateTime?                @map("addeddate")
+  modifiedby                                                           Int?                     @map("modifiedby")
+  modifieddate                                                         DateTime?                @map("modifieddate")
+  adv_payment_master                                                   adv_payment_master[]
+  chat_master_chat_master_from_idTouser_master                         Chat[]                   @relation("chat_master_from_idTouser_master")
+  chat_master_chat_master_to_idTouser_master                           Chat[]                   @relation("chat_master_to_idTouser_master")
+  invoice_master_invoice_master_advocate_idTouser_master               invoice_master[]         @relation("invoice_master_advocate_idTouser_master")
+  invoice_master_invoice_master_addedbyTouser_master                   invoice_master[]         @relation("invoice_master_addedbyTouser_master")
+  invoice_master_invoice_master_agent_payment_received_byTouser_master invoice_master[]         @relation("invoice_master_agent_payment_received_byTouser_master")
+  invoice_master_invoice_master_adv_payment_received_byTouser_master   invoice_master[]         @relation("invoice_master_adv_payment_received_byTouser_master")
+  invoice_payment_master                                               invoice_payment_master[]
+  notification_master_notification_master_from_idTouser_master         Notification[]           @relation("notification_master_from_idTouser_master")
+  notification_master_notification_master_to_idTouser_master           Notification[]           @relation("notification_master_to_idTouser_master")
+  olb_master_olb_master_addedbyTouser_master                           Olb[]                    @relation("olb_master_addedbyTouser_master")
+  olb_master_olb_master_modifiedbyTouser_master                        Olb[]                    @relation("olb_master_modifiedbyTouser_master")
+  project_master_project_master_addedbyTouser_master                   Project[]                @relation("project_master_addedbyTouser_master")
+  project_master_project_master_modifiedbyTouser_master                Project[]                @relation("project_master_modifiedbyTouser_master")
+  state_master_state_master_addedbyTouser_master                       state_master[]           @relation("state_master_addedbyTouser_master")
+  state_master_state_master_modifiedbyTouser_master                    state_master[]           @relation("state_master_modifiedbyTouser_master")
+  userType                                                             UserType?                @relation(fields: [userTypeId], references: [userTypeId], onDelete: Restrict, onUpdate: Restrict, map: "user_master_ibfk_1")
+  state_master_user_master_state_idTostate_master                      state_master?            @relation("user_master_state_idTostate_master", fields: [stateId], references: [state_id], onDelete: Restrict, onUpdate: Restrict, map: "user_master_ibfk_2")
+  security_que_master                                                  security_que_master?     @relation(fields: [sqId], references: [sq_id], onDelete: Restrict, onUpdate: Restrict, map: "user_master_ibfk_3")
+
+  @@unique([userTypeId, userCode])
+  @@index([addedby])
+  @@index([modifiedby])
+  @@index([sqId])
+  @@index([stateId])
+  @@index([userTypeId])
+  @@map("user_master")
+}
+
+model Chat {
+  chatId                                       Int       @id @default(autoincrement()) @map("chat_id")
+  systemEmailSms                               Int?      @default(1) @map("system_email_sms")
+  type                                         Int?      @default(0) @map("type")
+  supportType                                  Int?      @map("support_type")
+  fromId                                       Int?      @map("from_id")
+  toId                                         Int?      @map("to_id")
+  message                                      String?   @map("message") @db.VarChar(500)
+  status                                       Int?      @default(0) @map("status")
+  sendtime                                     DateTime? @map("sendtime")
+  receivetime                                  DateTime? @map("receivetime")
+  seentime                                     DateTime? @map("seentime")
+  user_master_chat_master_from_idTouser_master User?     @relation("chat_master_from_idTouser_master", fields: [fromId], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "chat_master_ibfk_1")
+  user_master_chat_master_to_idTouser_master   User?     @relation("chat_master_to_idTouser_master", fields: [toId], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "chat_master_ibfk_2")
+
+  @@index([fromId])
+  @@index([toId])
+  @@map("chat_master")
+}
+
+model Notification {
+  notificationId                                       Int                 @id @default(autoincrement()) @map("notification_id")
+  fromId                                               Int?                @map("from_id")
+  toId                                                 Int?                @map("to_id")
+  olbId                                                Int?                @map("olb_id")
+  advPayId                                             Int?                @map("adv_pay_id")
+  action                                               String?             @map("action") @db.VarChar(255)
+  title                                                String?             @map("title") @db.VarChar(255)
+  message                                              String?             @map("message") @db.Text
+  status                                               Int?                @default(0) @map("status")
+  sendtime                                             DateTime?           @map("sendtime")
+  receivetime                                          DateTime?           @map("receivetime")
+  seentime                                             DateTime?           @map("seentime")
+  user_master_notification_master_from_idTouser_master User?               @relation("notification_master_from_idTouser_master", fields: [fromId], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "notification_master_ibfk_1")
+  user_master_notification_master_to_idTouser_master   User?               @relation("notification_master_to_idTouser_master", fields: [toId], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "notification_master_ibfk_2")
+  olb_master                                           Olb?                @relation(fields: [olbId], references: [olbId], onDelete: Restrict, onUpdate: Restrict, map: "notification_master_ibfk_3")
+  adv_payment_master                                   adv_payment_master? @relation(fields: [advPayId], references: [adv_pay_id], onDelete: Restrict, onUpdate: Restrict, map: "notification_master_ibfk_4")
+
+  @@index([advPayId])
+  @@index([fromId])
+  @@index([olbId])
+  @@index([toId])
+  @@map("notification_master")
+}
+
+model Olb {
+  olbId                                          Int                      @id @default(autoincrement()) @map("olb_id")
+  type                                           Int?                     @map("type")
+  customizeReadymade                             Int?                     @map("customize_readymade")
+  stateId                                        Int?                     @map("state_id")
+  area                                           Int?                     @default(1) @map("area")
+  plotArea                                       String?                  @map("plot_area") @db.VarChar(255)
+  citySurveyOffice                               String?                  @map("city_survey_office") @db.VarChar(255)
+  ward                                           String?                  @map("ward") @db.VarChar(255)
+  sheetNo                                        String?                  @map("sheet_no") @db.VarChar(255)
+  district                                       String?                  @map("district") @db.VarChar(255)
+  taluka                                         String?                  @map("taluka") @db.VarChar(255)
+  village                                        String?                  @map("village") @db.VarChar(255)
+  khataNo                                        String?                  @map("khata_no") @db.VarChar(255)
+  citySurveyNo                                   String?                  @map("city_survey_no") @db.VarChar(255)
+  tpSchemeNo                                     String?                  @map("tp_scheme_no") @db.VarChar(255)
+  finalPlotNo                                    String?                  @map("final_plot_no") @db.VarChar(255)
+  sectorNo                                       String?                  @map("sector_no") @db.VarChar(255)
+  sectorPlotNo                                   String?                  @map("sector_plot_no") @db.VarChar(255)
+  areaSqMt                                       String?                  @map("area_sq_mt") @db.VarChar(255)
+  ownerFirstName                                 String?                  @map("owner_first_name") @db.VarChar(255)
+  ownerMiddleName                                String?                  @map("owner_middle_name") @db.VarChar(255)
+  ownerLastName                                  String?                  @map("owner_last_name") @db.VarChar(255)
+  ownerMobileNo                                  String?                  @map("owner_mobile_no") @db.VarChar(255)
+  purchaserFirstName                             String?                  @map("purchaser_first_name") @db.VarChar(255)
+  purchaserMiddleName                            String?                  @map("purchaser_middle_name") @db.VarChar(255)
+  purchaserLastName                              String?                  @map("purchaser_last_name") @db.VarChar(255)
+  purchaserMobileNo                              String?                  @map("purchaser_mobile_no") @db.VarChar(255)
+  purchaserEmail                                 String?                  @map("purchaser_email") @db.VarChar(255)
+  buildingName                                   String?                  @map("building_name") @db.VarChar(255)
+  flatShopNo                                     String?                  @map("flat_shop_no") @db.VarChar(255)
+  floorNo                                        String?                  @map("floor_no") @db.VarChar(255)
+  language                                       String?                  @map("language") @db.VarChar(255)
+  agreementDraft                                 String?                  @map("agreement_draft") @db.Text
+  draftStatus                                    Int?                     @map("draft_status")
+  agreementAddeddate                             DateTime?                @map("agreement_addeddate")
+  propertyDetail                                 String?                  @map("property_detail") @db.Text
+  preparedDate                                   DateTime?                @map("prepared_date")
+  sentDate                                       DateTime?                @map("sent_date")
+  acceptDate                                     DateTime?                @map("accept_date")
+  addedby                                        Int?                     @map("addedby")
+  addeddate                                      DateTime?                @map("addeddate")
+  modifiedby                                     Int?                     @map("modifiedby")
+  modifieddate                                   DateTime?                @map("modifieddate")
+  invoice_master                                 invoice_master[]
+  invoice_payment_master                         invoice_payment_master[]
+  notification_master                            Notification[]
+  olb_item_master                                olb_item_master[]
+  state_master                                   state_master?            @relation(fields: [stateId], references: [state_id], onDelete: Restrict, onUpdate: Restrict, map: "olb_master_ibfk_1")
+  user_master_olb_master_addedbyTouser_master    User?                    @relation("olb_master_addedbyTouser_master", fields: [addedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "olb_master_ibfk_2")
+  user_master_olb_master_modifiedbyTouser_master User?                    @relation("olb_master_modifiedbyTouser_master", fields: [modifiedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "olb_master_ibfk_3")
+  transaction_history                            transaction_history[]
+
+  @@index([addedby])
+  @@index([modifiedby])
+  @@index([stateId])
+  @@map("olb_master")
+}
+
+model Project {
+  projectId                                          Int                      @id @default(autoincrement()) @map("project_id")
+  projectName                                        String?                  @map("project_name") @db.VarChar(255)
+  state_id                                           Int?
+  city                                               String?                  @db.VarChar(255)
+  advocate_id                                        Int?
+  email                                              String?                  @db.VarChar(700)
+  reg_link_sent_on                                   DateTime?
+  addedby                                            Int?                     @map("addedby")
+  addeddate                                          DateTime?                @map("addeddate")
+  modifiedby                                         Int?                     @map("modifiedby")
+  modifieddate                                       DateTime?                @map("modifieddate")
+  handling_charges                                   handling_charges[]
+  invoice_master                                     invoice_master[]
+  invoice_payment_master                             invoice_payment_master[]
+  state_master                                       state_master?            @relation(fields: [state_id], references: [state_id], onDelete: Restrict, onUpdate: Restrict, map: "project_master_ibfk_1")
+  user_master_project_master_addedbyTouser_master    User?                    @relation("project_master_addedbyTouser_master", fields: [addedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "project_master_ibfk_2")
+  user_master_project_master_modifiedbyTouser_master User?                    @relation("project_master_modifiedbyTouser_master", fields: [modifiedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "project_master_ibfk_3")
+
+  @@unique([projectName, state_id, city])
+  @@index([addedby])
+  @@index([modifiedby])
+  @@index([state_id])
+  @@map("project_master")
+}
+
+model adv_payment_history_master {
+  adv_pay_history_id Int       @id @default(autoincrement())
+  adv_pay_id         Int
+  transaction_id     String?   @db.VarChar(255)
+  transaction_date   DateTime? @db.Date
+  payment_method     String?   @db.VarChar(255)
+  remarks            String?   @db.VarChar(500)
+  amount             Decimal?  @db.Decimal(10, 2)
+  payment_status     Int?
+  payment_remarks    String?   @db.VarChar(500)
+  addedby            Int?
+  addeddate          DateTime?
+
+  @@index([addedby])
+}
+
+model adv_payment_master {
+  adv_pay_id          Int              @id @default(autoincrement())
+  transaction_id      String?          @db.VarChar(255)
+  transaction_date    DateTime?        @db.Date
+  payment_method      String?          @db.VarChar(255)
+  remarks             String?          @db.VarChar(500)
+  amount              Decimal?         @db.Decimal(10, 2)
+  payment_status      Int?
+  payment_remarks     String?          @db.VarChar(500)
+  addedby             Int?
+  addeddate           DateTime?
+  user_master         User?            @relation(fields: [addedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "adv_payment_master_ibfk_1")
+  invoice_master      invoice_master[]
+  notification_master Notification[]
+
+  @@index([addedby])
+}
+
+model company_master {
+  company_id      Int       @id @default(autoincrement())
+  company_name    String?   @db.VarChar(255)
+  company_alias   String?   @db.VarChar(255)
+  company_code    String?   @db.VarChar(255)
+  address         String?   @db.Text
+  phone           String?   @db.VarChar(255)
+  mobile          String?   @db.VarChar(255)
+  email           String?   @db.VarChar(255)
+  gstin           String?   @db.VarChar(255)
+  pan_no          String?   @db.VarChar(255)
+  state           String?   @db.VarChar(50)
+  state_code      String?   @db.VarChar(50)
+  city            String?   @db.VarChar(255)
+  country         String?   @db.VarChar(255)
+  zip_code        String?   @db.VarChar(255)
+  bank_name       String?   @db.VarChar(255)
+  bank_ac_no      String?   @db.VarChar(255)
+  bank_ifsc       String?   @db.VarChar(255)
+  bank_swift_code String?   @db.VarChar(255)
+  bank_branch     String?   @db.VarChar(255)
+  active          Int?      @default(0)
+  addedby         Int?
+  addeddate       DateTime?
+  modifiedby      Int?
+  modifieddate    DateTime?
+}
+
+model handling_charges {
+  charge_id      Int           @id @default(autoincrement())
+  state_id       Int?
+  city           String?       @db.VarChar(255)
+  project_id     Int?
+  charge_in_perc Float?
+  addedby        Int?
+  addeddate      DateTime?
+  modifiedby     Int?
+  modifieddate   DateTime?
+  state_master   state_master? @relation(fields: [state_id], references: [state_id], onDelete: Restrict, onUpdate: Restrict, map: "handling_charges_ibfk_1")
+  project_master Project?      @relation(fields: [project_id], references: [projectId], onDelete: Restrict, onUpdate: Restrict, map: "handling_charges_ibfk_2")
+
+  @@index([project_id])
+  @@index([state_id])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model invoice_master {
+  invoice_id                                                        Int                      @id @default(autoincrement())
+  olb_id                                                            Int?
+  project_id                                                        Int?
+  advocate_id                                                       Int?
+  customer_id                                                       String?                  @db.VarChar(255)
+  state_id                                                          Int?
+  inv_no                                                            String?                  @db.VarChar(255)
+  invoice_no                                                        String?                  @db.VarChar(255)
+  invoice_date                                                      DateTime?                @db.Date
+  size_width                                                        Decimal?                 @default(0) @db.Decimal(10, 0)
+  size_height                                                       Decimal?                 @default(0) @db.Decimal(10, 0)
+  size                                                              Decimal?                 @default(0) @db.Decimal(10, 0)
+  rate                                                              Float?
+  final_rate                                                        Float?
+  total                                                             Float?
+  sgst_rate                                                         Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  sgst_amount                                                       Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  cgst_rate                                                         Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  cgst_amount                                                       Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  igst_rate                                                         Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  igst_amount                                                       Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  handling_charge_rate                                              Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  handling_charge_amount                                            Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  grandtotal                                                        Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  adv_amount                                                        Decimal?                 @default(0.00) @db.Decimal(10, 2)
+  razorpay_order_id                                                 String?                  @db.VarChar(255)
+  razorpay_response                                                 String?                  @db.Text
+  payment_status                                                    Int?
+  payment_remarks                                                   String?                  @db.VarChar(255)
+  transaction_ref_no                                                String?                  @db.VarChar(255)
+  transaction_remarks                                               String?                  @db.VarChar(500)
+  pg_id                                                             Int?
+  adv_transaction_id                                                String?                  @db.VarChar(255)
+  adv_payment_date                                                  DateTime?                @db.Date
+  adv_payment_method                                                String?                  @db.VarChar(255)
+  adv_payment_remarks                                               String?                  @db.VarChar(500)
+  adv_payment_status                                                Int?                     @default(0)
+  adv_ps_remarks                                                    String?                  @db.VarChar(255)
+  adv_pay_id                                                        Int?
+  addedby                                                           Int?
+  addeddate                                                         DateTime?
+  agent_payment_received_by                                         Int?
+  agent_payment_received_date                                       DateTime?
+  adv_payment_received_by                                           Int?
+  adv_payment_received_date                                         DateTime?
+  olb_master                                                        Olb?                     @relation(fields: [olb_id], references: [olbId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_1")
+  project_master                                                    Project?                 @relation(fields: [project_id], references: [projectId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_2")
+  user_master_invoice_master_advocate_idTouser_master               User?                    @relation("invoice_master_advocate_idTouser_master", fields: [advocate_id], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_3")
+  user_master_invoice_master_addedbyTouser_master                   User?                    @relation("invoice_master_addedbyTouser_master", fields: [addedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_4")
+  payment_gateway_master                                            payment_gateway_master?  @relation(fields: [pg_id], references: [pg_id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_5")
+  state_master                                                      state_master?            @relation(fields: [state_id], references: [state_id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_6")
+  adv_payment_master                                                adv_payment_master?      @relation(fields: [adv_pay_id], references: [adv_pay_id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_7")
+  user_master_invoice_master_agent_payment_received_byTouser_master User?                    @relation("invoice_master_agent_payment_received_byTouser_master", fields: [agent_payment_received_by], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_8")
+  user_master_invoice_master_adv_payment_received_byTouser_master   User?                    @relation("invoice_master_adv_payment_received_byTouser_master", fields: [adv_payment_received_by], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_master_ibfk_9")
+  invoice_payment_master                                            invoice_payment_master[]
+  transaction_history                                               transaction_history[]
+
+  @@index([addedby])
+  @@index([adv_pay_id])
+  @@index([adv_payment_received_by])
+  @@index([advocate_id])
+  @@index([agent_payment_received_by])
+  @@index([olb_id])
+  @@index([pg_id])
+  @@index([project_id])
+  @@index([state_id])
+}
+
+model invoice_payment_master {
+  ip_id               Int             @id @default(autoincrement())
+  invoice_id          Int?
+  olb_id              Int?
+  project_id          Int?
+  advocate_id         Int?
+  payment_status      String?         @db.VarChar(255)
+  razorpay_order_id   String?         @db.VarChar(255)
+  razorpay_payment_id String?         @db.VarChar(255)
+  payment_method      String?         @db.VarChar(255)
+  bank_name           String?         @db.VarChar(255)
+  merchant_order_id   String?         @db.VarChar(255)
+  transaction_id      String?         @db.VarChar(255)
+  entity              String?         @db.VarChar(255)
+  razorpay_invoice_id String?         @db.VarChar(255)
+  international       Int?
+  amount_refunded     Decimal?        @default(0) @db.Decimal(10, 0)
+  refund_status       String?         @db.VarChar(255)
+  captured            Int?
+  description         String?         @db.VarChar(255)
+  card_id             String?         @db.VarChar(255)
+  wallet              String?         @db.VarChar(255)
+  vpa                 String?         @db.VarChar(255)
+  fee                 Decimal?        @default(0) @db.Decimal(10, 0)
+  tax                 Decimal?        @default(0) @db.Decimal(10, 0)
+  error_code          String?         @db.VarChar(255)
+  error_description   String?         @db.VarChar(255)
+  error_source        String?         @db.VarChar(255)
+  error_step          String?         @db.VarChar(255)
+  error_reason        String?         @db.VarChar(255)
+  razorpay_response   String?         @db.Text
+  created_at          String?         @db.VarChar(255)
+  addedby             Int?
+  addeddate           DateTime?
+  modifiedby          Int?
+  modifieddate        DateTime?
+  invoice_master      invoice_master? @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade, map: "invoice_payment_master_ibfk_1")
+  olb_master          Olb?            @relation(fields: [olb_id], references: [olbId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_payment_master_ibfk_2")
+  project_master      Project?        @relation(fields: [project_id], references: [projectId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_payment_master_ibfk_3")
+  user_master         User?           @relation(fields: [advocate_id], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "invoice_payment_master_ibfk_4")
+
+  @@index([advocate_id])
+  @@index([invoice_id])
+  @@index([olb_id])
+  @@index([project_id])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model login_history {
+  login_id    Int       @id @default(autoincrement())
+  user_id     Int?
+  login_type  Int?
+  ip          String?   @db.VarChar(50)
+  session_id  String?   @db.VarChar(255)
+  firebase_id String?   @db.VarChar(255)
+  login_time  DateTime?
+  logout_time DateTime?
+
+  @@index([user_id])
+}
+
+model olb_item_master {
+  olb_item_id   Int     @id @default(autoincrement())
+  olb_id        Int?
+  survey_no_new String? @db.VarChar(255)
+  survey_no_old String? @db.VarChar(255)
+  olb_master    Olb?    @relation(fields: [olb_id], references: [olbId], onDelete: Cascade, map: "olb_item_master_ibfk_1")
+
+  @@index([olb_id])
+}
+
+model payment_gateway_master {
+  pg_id           Int              @id @default(autoincrement())
+  payment_gateway String?          @unique @db.VarChar(255)
+  invoice_master  invoice_master[]
+}
+
+model security_que_master {
+  sq_id        Int       @id @default(autoincrement())
+  label        String?   @unique @db.VarChar(255)
+  addedby      Int?
+  addeddate    DateTime?
+  modifiedby   Int?
+  modifieddate DateTime?
+  user_master  User[]
+}
+
+model state_master {
+  state_id                                         Int                @id @default(autoincrement())
+  state_code                                       String?            @db.VarChar(50)
+  state_name                                       String?            @db.VarChar(100)
+  addedby                                          Int?
+  addeddate                                        DateTime?
+  modifiedby                                       Int?
+  modifieddate                                     DateTime?
+  handling_charges                                 handling_charges[]
+  invoice_master                                   invoice_master[]
+  olb_master                                       Olb[]
+  project_master                                   Project[]
+  user_master_state_master_addedbyTouser_master    User?              @relation("state_master_addedbyTouser_master", fields: [addedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "state_master_ibfk_1")
+  user_master_state_master_modifiedbyTouser_master User?              @relation("state_master_modifiedbyTouser_master", fields: [modifiedby], references: [userId], onDelete: Restrict, onUpdate: Restrict, map: "state_master_ibfk_2")
+  user_master_user_master_state_idTostate_master   User[]             @relation("user_master_state_idTostate_master")
+
+  @@index([addedby])
+  @@index([modifiedby])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model transaction_history {
+  th_id               Int             @id @default(autoincrement())
+  type                Int?
+  invoice_id          Int?
+  olb_id              Int?
+  amount              Decimal?        @default(0.00) @db.Decimal(10, 2)
+  payment_status      Int?
+  payment_remarks     String?         @db.VarChar(255)
+  transaction_ref_no  String?         @db.VarChar(255)
+  transaction_remarks String?         @db.VarChar(500)
+  transaction_date    DateTime?
+  screenshot          String?         @db.VarChar(255)
+  invoice_master      invoice_master? @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade, map: "transaction_history_ibfk_1")
+  olb_master          Olb?            @relation(fields: [olb_id], references: [olbId], onDelete: Restrict, onUpdate: Restrict, map: "transaction_history_ibfk_2")
+
+  @@index([invoice_id])
+  @@index([olb_id])
+  @@map("transaction_history")
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement()) @map("id")
+  name      String   @map("name") @db.VarChar(255)
+  phone     String   @map("phone") @db.VarChar(50)
+  email     String   @map("email") @db.VarChar(255)
+  message   String   @map("message") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_messages")
+}
