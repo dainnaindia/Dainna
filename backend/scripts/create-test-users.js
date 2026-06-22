@@ -4,6 +4,26 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
+  // Seed User Types first (due to foreign key constraint)
+  const userTypes = [
+    { userTypeId: 1, userType: 'Admin' },
+    { userTypeId: 2, userType: 'Staff' },
+    { userTypeId: 3, userType: 'Agent' },
+    { userTypeId: 4, userType: 'Advocate' }
+  ];
+
+  for (const ut of userTypes) {
+    const existingUt = await prisma.userType.findFirst({
+      where: { userTypeId: ut.userTypeId }
+    });
+    if (!existingUt) {
+      await prisma.userType.create({
+        data: ut
+      });
+      console.log(`Created user type ${ut.userType}`);
+    }
+  }
+
   const users = [
     { username: 'admin', password: 'admin', userTypeId: 1, firstname: 'Test', surname: 'Admin', status: 1 },
     { username: 'staff', password: 'staff', userTypeId: 2, firstname: 'Test', surname: 'Staff', status: 1 },
