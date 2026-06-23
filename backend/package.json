@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "prisma:generate": "npx prisma generate --schema=../database/schema.prisma",
     "prisma:migrate": "npx prisma migrate dev --schema=../database/schema.prisma",
-    "db:migrate-data": "node migrate-data.js"
+    "db:migrate-data": "node scripts/migrate-data.js"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",

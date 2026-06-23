@@ -85,10 +85,11 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
       );
 
       // Set cookie options
+      const isProd = process.env.NODE_ENV === 'production';
       res.cookie('auth_token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       });
 

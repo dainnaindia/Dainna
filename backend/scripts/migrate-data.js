@@ -153,6 +153,40 @@ async function main() {
         console.log(`- Successfully inserted ${rows.length} rows.`);
       }
     }
+
+    // 5. Reset PostgreSQL Sequences
+    console.log('Resetting PostgreSQL sequences...');
+    const sequenceTables = [
+      { name: 'user_type_master', id: 'user_type_id' },
+      { name: 'security_que_master', id: 'sq_id' },
+      { name: 'state_master', id: 'state_id' },
+      { name: 'user_master', id: 'user_id' },
+      { name: 'project_master', id: 'project_id' },
+      { name: 'olb_master', id: 'olb_id' },
+      { name: 'chat_master', id: 'chat_id' },
+      { name: 'adv_payment_master', id: 'adv_pay_id' },
+      { name: 'notification_master', id: 'notification_id' },
+      { name: 'adv_payment_history_master', id: 'adv_pay_history_id' },
+      { name: 'company_master', id: 'company_id' },
+      { name: 'handling_charges', id: 'charge_id' },
+      { name: 'payment_gateway_master', id: 'pg_id' },
+      { name: 'invoice_master', id: 'invoice_id' },
+      { name: 'invoice_payment_master', id: 'ip_id' },
+      { name: 'login_history', id: 'login_id' },
+      { name: 'olb_item_master', id: 'olb_item_id' },
+      { name: 'transaction_history', id: 'th_id' }
+    ];
+
+    for (const table of sequenceTables) {
+      try {
+        const query = `SELECT setval(pg_get_serial_sequence('"${table.name}"', '${table.id}'), COALESCE(MAX("${table.id}"), 0) + 1, false) FROM "${table.name}"`;
+        await pg.$queryRawUnsafe(query);
+      } catch (err) {
+        console.warn(`- [Warn] Could not reset sequence for ${table.name}:`, err.message);
+      }
+    }
+    console.log('PostgreSQL sequences reset successfully.');
+
     console.log('*** Migration completed successfully! ***');
   } catch (err) {
     console.error('[Error] Migration failed:', err);
