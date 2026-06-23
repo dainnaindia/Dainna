@@ -243,6 +243,12 @@ router.post('/accept', authMiddleware, async (req: Request, res: Response): Prom
       return res.status(404).json({ Status: 0, Msg: 'Draft not found.' });
     }
 
+    // Ensure that advocate payout status is success (adv_payment_status === 1)
+    const hasUnverifiedPayout = d.invoice_master?.some(invoice => invoice.adv_payment_status !== 1);
+    if (hasUnverifiedPayout) {
+      return res.status(400).json({ Status: 0, Msg: 'Cannot accept draft. Advocate payout is not verified yet.' });
+    }
+
     const updated = await prisma.olb.update({
       where: { olbId: olbIdVal },
       data: {
@@ -257,7 +263,7 @@ router.post('/accept', authMiddleware, async (req: Request, res: Response): Prom
       for (const invoice of d.invoice_master) {
         if (invoice.payment_status === 1 && invoice.adv_payment_status !== 1) {
           const autoUtr = `AUTO-ADV-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
-          await processSuccessfulPayout(invoice.invoice_id, autoUtr, 'Automated payout upon draft acceptance');
+          await processSuccessfulPayout(invoice.invoice_id, autoUtr, 'Automated payout upon draft acceptance', false);
         }
       }
     }

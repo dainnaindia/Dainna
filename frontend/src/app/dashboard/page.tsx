@@ -82,14 +82,14 @@ export default function AdminDashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Card 1: Success Trans (Agent) - Clickable */}
-              <Link href="/success_transaction" className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
+              <Link href="/success_transaction" className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Agents Today Success Transaction</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalAgentTodaysSuccessTrans}</span>
               </Link>
 
               {/* Card 2: Failed Transactions (Agent) - Clickable */}
-              <Link href="/failed_transaction" className="bg-gradient-to-br from-red-500 to-orange-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
+              <Link href="/failed_transaction" className="bg-gradient-to-br from-red-600 to-rose-600 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Agent Failed Transactions</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalAgentFailedTransactions}</span>
@@ -119,28 +119,28 @@ export default function AdminDashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Card 5: Send to Adv - Clickable */}
-              <Link href="/send_to_adv_draft" className="bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
+              <Link href="/send_to_adv_draft" className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Send to Adv Transaction</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalSendToAdvTrans}</span>
               </Link>
 
               {/* Card 6: Adv Success - Clickable */}
-              <Link href="/success_transaction_adv" className="bg-gradient-to-br from-pink-600 to-rose-600 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
+              <Link href="/success_transaction_adv" className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Adv Success Transaction</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalAdvTodaySuccessTrans}</span>
               </Link>
 
               {/* Card 7: Adv Failed - Clickable */}
-              <Link href="/failed_transaction_adv" className="bg-gradient-to-br from-red-600 to-orange-600 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
+              <Link href="/failed_transaction_adv" className="bg-gradient-to-br from-red-600 to-rose-600 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Adv Failed Transactions</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalAdvFailedTransactions}</span>
               </Link>
 
               {/* Card 8: Today Completed - Non-clickable */}
-              <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl p-6 border border-slate-750 shadow-lg relative overflow-hidden block">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-6 border border-slate-750 shadow-lg relative overflow-hidden block">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 block mb-2">Today Completed Transaction</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalTodaysCompleted}</span>
@@ -156,28 +156,28 @@ export default function AdminDashboard() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Card 9: Customized Draft - Non-clickable */}
-              <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-xl p-6 border border-indigo-950 shadow-lg relative overflow-hidden block">
+              <div className="bg-gradient-to-br from-yellow-500 to-amber-400 rounded-xl p-6 border border-amber-500/20 shadow-lg relative overflow-hidden block">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 block mb-2">Total Customized Draft</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalCustomizedDraft}</span>
               </div>
 
               {/* Card 10: Readymade Draft - Non-clickable */}
-              <div className="bg-gradient-to-br from-violet-900 to-fuchsia-900 rounded-xl p-6 border border-violet-955 shadow-lg relative overflow-hidden block">
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-650 rounded-xl p-6 border border-blue-800/20 shadow-lg relative overflow-hidden block">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 block mb-2">Total Readymade Draft</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalReadymadeDraft}</span>
               </div>
 
               {/* Card 11: Open Land - Non-clickable */}
-              <div className="bg-gradient-to-br from-blue-900 to-indigo-900 rounded-xl p-6 border border-blue-955 shadow-lg relative overflow-hidden block">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-6 border border-emerald-550/20 shadow-lg relative overflow-hidden block">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 block mb-2">Total Open Land Transaction</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalOpenLandTransaction}</span>
               </div>
 
               {/* Card 12: Building - Non-clickable */}
-              <div className="bg-gradient-to-br from-cyan-900 to-blue-900 rounded-xl p-6 border border-cyan-955 shadow-lg relative overflow-hidden block">
+              <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl p-6 border border-orange-550/20 shadow-lg relative overflow-hidden block">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 block mb-2">Total Building Transaction</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalBuildingTransaction}</span>
@@ -191,9 +191,13 @@ export default function AdminDashboard() {
               <HardDrive size={18} className="text-blue-500" />
               Management & Properties
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Spacers to align cards to columns 3 and 4 on desktop screens */}
+              <div className="hidden lg:block" />
+              <div className="hidden lg:block" />
+
               {/* Card 13: Total Agent - Clickable */}
-              <Link href="/reg_agent" className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
+              <Link href="/reg_agent" className="bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl p-6 border-0 shadow-lg hover:scale-102 hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden block cursor-pointer">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Total Agent</span>
                 <span className="text-3xl font-extrabold text-white">{stats.TotalAgent}</span>

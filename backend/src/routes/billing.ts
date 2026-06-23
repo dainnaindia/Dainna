@@ -837,7 +837,7 @@ router.post('/invoices/update-payment-status', authMiddleware, async (req: Reque
 
       // Auto-trigger payout immediately
       const autoUtr = `AUTO-ADV-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
-      await processSuccessfulPayout(invoiceIdVal, autoUtr, 'Automated payout upon manual payment verification');
+      await processSuccessfulPayout(invoiceIdVal, autoUtr, 'Automated payout upon manual payment verification', false);
     }
 
     // Update transaction history status for the matching transaction ref

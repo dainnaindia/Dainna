@@ -278,7 +278,18 @@ export default function DashboardLayout({ children, role }: { children: React.Re
       const res = await fetch(url, { credentials: 'include' });
       const data = await res.json();
       if (res.ok && data.Status === 100) {
-        setNotifList(data.Notifications || []);
+        const list = data.Notifications || [];
+        setNotifList(list);
+        if (list.length > 0) {
+          const ids = list.map((n: any) => n.notificationId);
+          await fetch('http://localhost:5000/api/notifications/mark-read', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationIds: ids })
+          });
+          fetchCounts();
+        }
       }
     } catch (err) {
       console.error('Failed to fetch notifications list', err);

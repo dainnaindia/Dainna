@@ -754,7 +754,7 @@ function ViewAdvocatePaymentContent() {
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-500/10 hover:shadow-purple-500/25 font-sans"
               >
                 <RefreshCw size={14} />
-                <span>Payment Received ??</span>
+                <span>Payment Received</span>
               </button>
             )}
           </div>
@@ -870,7 +870,7 @@ function ViewAdvocatePaymentContent() {
                       
                       {currentUser?.userTypeId === 4 && (
                         <td className="py-3 px-4 text-center no-print font-sans">
-                          {inv.draftStatus === 3 ? (
+                          {inv.draftStatus === 3 && (payment.paymentStatus === 1 || inv.advPaymentStatus === 1) ? (
                             <button
                               type="button"
                               onClick={() => handleAcceptDraftClick(inv.olbId)}

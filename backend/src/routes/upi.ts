@@ -412,10 +412,10 @@ router.post('/webhook', async (req: Request, res: Response): Promise<any> => {
       });
       if (invAfter && invAfter.payment_status === 1 && invAfter.adv_payment_status !== 1) {
         const autoUtr = `AUTO-ADV-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
-        await processSuccessfulPayout(invId, autoUtr, 'Automated payout upon agent payment confirmation', true);
+        await processSuccessfulPayout(invId, autoUtr, 'Automated payout upon agent payment confirmation', false);
       }
     } else if (invoice.adv_payment_status !== 1) {
-      await processSuccessfulPayout(invId, utr, remarks);
+      await processSuccessfulPayout(invId, utr, remarks, false);
     }
 
     return res.json({ Status: 100, Msg: 'Webhook processed successfully.' });
@@ -453,7 +453,7 @@ router.post('/simulate-success', async (req: Request, res: Response): Promise<an
     });
     if (invAfter && invAfter.payment_status === 1 && invAfter.adv_payment_status !== 1) {
       const autoUtr = `AUTO-ADV-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
-      await processSuccessfulPayout(invAfter.invoice_id, autoUtr, 'Automated payout upon agent payment confirmation', true);
+      await processSuccessfulPayout(invAfter.invoice_id, autoUtr, 'Automated payout upon agent payment confirmation', false);
     }
 
     return res.json({
@@ -578,7 +578,7 @@ router.post('/simulate-payout-success', async (req: Request, res: Response): Pro
   const generatedUtr = utr || `UTR-ADV-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
 
   try {
-    const updatedInvoice = await processSuccessfulPayout(parseInt(invoiceId), generatedUtr, 'Simulated UPI Gateway Advocate Payout');
+    const updatedInvoice = await processSuccessfulPayout(parseInt(invoiceId), generatedUtr, 'Simulated UPI Gateway Advocate Payout', false);
     return res.json({
       Status: 100,
       Msg: 'Simulation checkout advocate payout successful.',

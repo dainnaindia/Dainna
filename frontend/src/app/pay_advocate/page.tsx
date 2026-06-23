@@ -609,7 +609,7 @@ function PayAdvocateContent() {
             )}
 
             {/* Advocate: Accept Draft */}
-            {draft.draftStatus === 3 && currentUser?.userTypeId === 4 && invoice?.payment_status === 1 && (
+            {draft.draftStatus === 3 && currentUser?.userTypeId === 4 && invoice?.adv_payment_status === 1 && (
               <button 
                 onClick={handleAcceptDraft}
                 disabled={actionLoading}

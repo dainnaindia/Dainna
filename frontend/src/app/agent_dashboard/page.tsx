@@ -160,58 +160,55 @@ export default function AgentDashboardPage() {
             <span>Loading agent metrics...</span>
           </div>
         ) : stats ? (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Card 1 */}
-              <Link href="/view_all_invoice" className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Today Success Transactions</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalSuccessTransaction}</span>
-              </Link>
+           <div className="space-y-6">
+             {/* Row 1 */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+               {/* Card 1 */}
+               <Link href="/view_all_invoice" className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl p-6 border border-slate-800 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
+                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2 font-sans">Today Success Transaction</span>
+                 <span className="text-3xl font-extrabold text-white">{stats.TotalSuccessTransaction}</span>
+               </Link>
 
-              {/* Card 2 */}
-              <Link href="/agent_failed_transaction" className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Total Failed Transactions</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalAgentFailedTransactions}</span>
-              </Link>
+               {/* Card 2 */}
+               <Link href="/agent_failed_transaction" className="bg-gradient-to-br from-red-600 to-rose-600 rounded-xl p-6 border border-slate-800 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
+                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2 font-sans">Total Failed Transactions</span>
+                 <span className="text-3xl font-extrabold text-white">{stats.TotalAgentFailedTransactions}</span>
+               </Link>
 
-              {/* Card 2.5: Prepared Drafts */}
-              <Link href="/view_all_prepared_draft" className="bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Total Prepared Drafts</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalPreparedDrafts || 0}</span>
-              </Link>
+               {/* Card 3 */}
+               <Link href="/view_all_agent_completed_draft" className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-6 border border-slate-800 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
+                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2 font-sans">Today's Completed Draft</span>
+                 <span className="text-3xl font-extrabold text-white">{stats.TotalTodaysCompleted}</span>
+               </Link>
 
-              {/* Card 3 */}
-              <Link href="/view_all_agent_completed_draft" className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Today Completed Drafts</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalTodaysCompleted}</span>
-              </Link>
+               {/* Card 4 */}
+               <Link href="/view_all_agent_completed_draft" className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl p-6 border border-slate-800 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
+                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2 font-sans">Current Month Completed</span>
+                 <span className="text-3xl font-extrabold text-white">{stats.TotalCurrentMonthCompleted}</span>
+               </Link>
+             </div>
 
-              {/* Card 4 */}
-              <Link href="/view_all_agent_completed_draft" className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Current Month Completed</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalCurrentMonthCompleted}</span>
-              </Link>
+             {/* Row 2 */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+               {/* Card 5 */}
+               <Link href="/agent_rate_list" className="bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl p-6 border border-slate-800 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
+                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2 font-sans">Total Project With City</span>
+                 <span className="text-3xl font-extrabold text-white">{stats.TotalAgentProjectWithCity}</span>
+               </Link>
 
-              {/* Card 5 */}
-              <Link href="/agent_rate_list" className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Total Project With City</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalAgentProjectWithCity}</span>
-              </Link>
-
-              {/* Card 6 */}
-              <Link href="/view_all_agent_completed_draft" className="bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-xl p-6 border-0 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
-                <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2">Total Completed Drafts</span>
-                <span className="text-3xl font-extrabold text-white">{stats.TotalAgentCompletedDraft}</span>
-              </Link>
-            </div>
-          </div>
+               {/* Card 6 */}
+               <Link href="/view_all_agent_completed_draft" className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-6 border border-slate-800 shadow-lg gradient-card-hover relative overflow-hidden block cursor-pointer hover:-translate-y-1 transition-all">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-8 -translate-y-8 pointer-events-none" />
+                 <span className="text-xs uppercase tracking-wider font-semibold text-white/80 block mb-2 font-sans">Total Completed Draft</span>
+                 <span className="text-3xl font-extrabold text-white">{stats.TotalAgentCompletedDraft}</span>
+               </Link>
+             </div>
+           </div>
         ) : (
           <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center text-slate-500">
             No statistics metrics available.
