@@ -473,80 +473,97 @@ router.post('/accept', authMiddleware, async (req: Request, res: Response): Prom
     const purchaserEmail = d.purchaserEmail;
 
     if (duplicate) {
-      if (purchaserMobile) {
-        const smsMessage = `Dear ${purchaserName}, a duplication check alert has been triggered for your agreement draft. Someone else has also purchased this draft.`;
-        sendSMS({ to: purchaserMobile, message: smsMessage }).catch(err => 
-          console.error('Failed to send duplicate alert SMS to purchaser:', err)
-        );
-      }
+      let emailSuccess = false;
+      const emailSubject = 'Dainna Property Draft Duplication Warning';
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ffcccc; padding: 20px; border-radius: 8px; background-color: #fff5f5;">
+          <h2 style="color: #cc0000; text-align: center; border-bottom: 2px solid #cc0000; padding-bottom: 10px;">Duplication Warning Alert</h2>
+          <p>Dear ${purchaserName},</p>
+          <p>A duplication check alert has been triggered for your agreement draft. Someone else has also purchased a draft for this property.</p>
+          <div style="background-color: #ffebeb; padding: 15px; border-left: 4px solid #cc0000; margin: 15px 0;">
+            <strong>Property Details:</strong> ${d.district || ''} ${d.state_master?.state_name || ''} ${d.plotArea || d.areaSqMt || ''}<br/>
+          </div>
+          <p>Please contact your Agent or Dainna support for assistance.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">This is an automated notification from Dainna.</p>
+        </div>
+      `;
 
       if (purchaserEmail) {
-        const emailSubject = 'Dainna Property Draft Duplication Warning';
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ffcccc; padding: 20px; border-radius: 8px; background-color: #fff5f5;">
-            <h2 style="color: #cc0000; text-align: center; border-bottom: 2px solid #cc0000; padding-bottom: 10px;">Duplication Warning Alert</h2>
-            <p>Dear ${purchaserName},</p>
-            <p>A duplication check alert has been triggered for your agreement draft. Someone else has also purchased a draft for this property.</p>
-            <div style="background-color: #ffebeb; padding: 15px; border-left: 4px solid #cc0000; margin: 15px 0;">
-              <strong>Property Details:</strong> ${d.district || ''} ${d.state_master?.state_name || ''} ${d.plotArea || d.areaSqMt || ''}<br/>
-            </div>
-            <p>Please contact your Agent or Dainna support for assistance.</p>
-            <p style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">This is an automated notification from Dainna.</p>
-          </div>
-        `;
-        sendEmail({
-          to: purchaserEmail,
-          subject: emailSubject,
-          text: `Dear ${purchaserName}, a duplication check alert has been triggered for your agreement draft. Property Details: ${d.district || ''} ${d.state_master?.state_name || ''} ${d.plotArea || d.areaSqMt || ''}. Someone else has also purchased this draft. Please contact your Agent or support.`,
-          html: emailHtml
-        }).catch(err => 
-          console.error('Failed to send duplicate alert Email to purchaser:', err)
-        );
+        try {
+          const mailResult = await sendEmail({
+            to: purchaserEmail,
+            subject: emailSubject,
+            text: `Dear ${purchaserName}, a duplication check alert has been triggered for your agreement draft. Property Details: ${d.district || ''} ${d.state_master?.state_name || ''} ${d.plotArea || d.areaSqMt || ''}. Someone else has also purchased this draft. Please contact your Agent or support.`,
+            html: emailHtml
+          });
+          if (mailResult && mailResult.success) {
+            emailSuccess = true;
+          }
+        } catch (err) {
+          console.error('Failed to send duplicate alert Email to purchaser:', err);
+        }
+      }
+
+      if (!emailSuccess && purchaserMobile) {
+        try {
+          const smsMessage = `Dear ${purchaserName}, a duplication check alert has been triggered for your agreement draft. Someone else has also purchased this draft.`;
+          await sendSMS({ to: purchaserMobile, message: smsMessage });
+        } catch (err) {
+          console.error('Failed to send duplicate alert SMS fallback to purchaser:', err);
+        }
       }
     } else {
-      if (purchaserMobile) {
-        const smsMessage = `Dear ${purchaserName}, your agreement draft has been finalized and accepted by the advocate. Thank you for choosing Dainna.`;
-        sendSMS({ to: purchaserMobile, message: smsMessage }).catch(err => 
-          console.error('Failed to send accepted success SMS to purchaser:', err)
-        );
-      }
+      let emailSuccess = false;
+      const emailSubject = 'Your Dainna Agreement Draft is Ready';
+      const propDetails = `${d.district || ''} ${d.state_master?.state_name || ''} ${d.plotArea || d.areaSqMt || ''}`.trim();
+      const agreementDraftContent = d.agreementDraft || 'Agreement draft text content not created yet.';
+      
+      const formattedParagraphs = agreementDraftContent
+        .split('\n')
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(trimmed => `<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6; font-family: 'Times New Roman', Times, serif; font-size: 12pt;">${trimmed}</p>`)
+        .join('');
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+          <h2 style="color: #1a56db; text-align: center; border-bottom: 2px solid #1a56db; padding-bottom: 10px;">Agreement Draft Ready</h2>
+          <p>Dear ${purchaserName},</p>
+          <p>Your agreement draft has been finalized and accepted by the advocate. You can find the finalized agreement content below:</p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #1a56db; margin: 15px 0; font-size: 14px;">
+            <strong>Property Details:</strong> ${propDetails}<br/>
+            <strong>Date of Acceptance:</strong> ${new Date().toLocaleDateString('en-IN')}<br/>
+          </div>
+          <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;">
+            ${formattedParagraphs}
+          </div>
+          <p style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">This is an automated notification from Dainna.</p>
+        </div>
+      `;
 
       if (purchaserEmail) {
-        const emailSubject = 'Your Dainna Agreement Draft is Ready';
-        const propDetails = `${d.district || ''} ${d.state_master?.state_name || ''} ${d.plotArea || d.areaSqMt || ''}`.trim();
-        const agreementDraftContent = d.agreementDraft || 'Agreement draft text content not created yet.';
-        
-        const formattedParagraphs = agreementDraftContent
-          .split('\n')
-          .map(p => p.trim())
-          .filter(Boolean)
-          .map(trimmed => `<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6; font-family: 'Times New Roman', Times, serif; font-size: 12pt;">${trimmed}</p>`)
-          .join('');
+        try {
+          const mailResult = await sendEmail({
+            to: purchaserEmail,
+            subject: emailSubject,
+            text: `Dear ${purchaserName}, your agreement draft has been finalized and accepted by the advocate. Property Details: ${propDetails}.\n\nAgreement Content:\n${agreementDraftContent}`,
+            html: emailHtml
+          });
+          if (mailResult && mailResult.success) {
+            emailSuccess = true;
+          }
+        } catch (err) {
+          console.error('Failed to send accepted success Email to purchaser:', err);
+        }
+      }
 
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
-            <h2 style="color: #1a56db; text-align: center; border-bottom: 2px solid #1a56db; padding-bottom: 10px;">Agreement Draft Ready</h2>
-            <p>Dear ${purchaserName},</p>
-            <p>Your agreement draft has been finalized and accepted by the advocate. You can find the finalized agreement content below:</p>
-            <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #1a56db; margin: 15px 0; font-size: 14px;">
-              <strong>Property Details:</strong> ${propDetails}<br/>
-              <strong>Date of Acceptance:</strong> ${new Date().toLocaleDateString('en-IN')}<br/>
-            </div>
-            <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;">
-              ${formattedParagraphs}
-            </div>
-            <p style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">This is an automated notification from Dainna.</p>
-          </div>
-        `;
-
-        sendEmail({
-          to: purchaserEmail,
-          subject: emailSubject,
-          text: `Dear ${purchaserName}, your agreement draft has been finalized and accepted by the advocate. Property Details: ${propDetails}.\n\nAgreement Content:\n${agreementDraftContent}`,
-          html: emailHtml
-        }).catch(err => 
-          console.error('Failed to send accepted success Email to purchaser:', err)
-        );
+      if (!emailSuccess && purchaserMobile) {
+        try {
+          const smsMessage = `Dear ${purchaserName}, your agreement draft has been finalized and accepted by the advocate. Thank you for choosing Dainna.`;
+          await sendSMS({ to: purchaserMobile, message: smsMessage });
+        } catch (err) {
+          console.error('Failed to send accepted success SMS fallback to purchaser:', err);
+        }
       }
     }
 

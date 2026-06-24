@@ -119,13 +119,111 @@ async function runRecoveryTests() {
   }
   console.log('Login successful! New credentials validated.');
 
-  // Restore original password hash directly in DB to prevent locking user out
-  console.log('\n[Step 6] Restoring user original password hash...');
+  // ==========================================
+  // Fallback Test: User has no email registered
+  // ==========================================
+  console.log('\n--- Starting Fallback Password Recovery Tests (No Email) ---');
+  
+  const originalEmail = testUser.email;
+  console.log(`Temporarily removing email for user ${username}...`);
   await prisma.user.update({
     where: { username },
-    data: { password: originalPasswordHash }
+    data: { email: '' }
   });
-  console.log('Original password hash restored successfully.');
+
+  try {
+    // Fallback Step 1: Request Password Recovery details (should have empty email)
+    console.log('\n[Fallback Step 1] Requesting Forgot Password details...');
+    const fbForgotRes = await fetch(`${apiBase}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    const fbForgotData: any = await fbForgotRes.json();
+    console.log('Forgot Password response:', fbForgotData);
+    if (!fbForgotRes.ok || fbForgotData.email !== '') {
+      throw new Error('Fallback Forgot Password details are incorrect');
+    }
+
+    // Fallback Step 2: Try email OTP (should fail/return 400 since email is empty)
+    console.log('\n[Fallback Step 2] Requesting OTP via Email (expected to fail)...');
+    const fbEmailOtpRes = await fetch(`${apiBase}/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, method: 'email' })
+    });
+    const fbEmailOtpData: any = await fbEmailOtpRes.json();
+    console.log('Email OTP response status (expect 400):', fbEmailOtpRes.status);
+    console.log('Response body:', fbEmailOtpData);
+    if (fbEmailOtpRes.ok || fbEmailOtpData.Status !== 0) {
+      throw new Error('Email OTP should have failed due to missing email address');
+    }
+
+    // Fallback Step 3: Request OTP via SMS (should succeed)
+    console.log('\n[Fallback Step 3] Requesting OTP via SMS...');
+    const fbSmsOtpRes = await fetch(`${apiBase}/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, method: 'sms' })
+    });
+    const fbSmsOtpData: any = await fbSmsOtpRes.json();
+    console.log('SMS OTP response status:', fbSmsOtpRes.status);
+    console.log('Response body:', fbSmsOtpData);
+    if (!fbSmsOtpRes.ok || fbSmsOtpData.Status !== 100 || !fbSmsOtpData.otp) {
+      throw new Error('Failed to request OTP via SMS');
+    }
+    const fbReceivedOtp = fbSmsOtpData.otp;
+
+    // Fallback Step 4: Verify SMS OTP (should succeed, and reset link should send via SMS fallback)
+    console.log('\n[Fallback Step 4] Verifying OTP and generating reset token...');
+    const fbVerifyRes = await fetch(`${apiBase}/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, otp: fbReceivedOtp })
+    });
+    const fbVerifyData: any = await fbVerifyRes.json();
+    console.log('Verify OTP response:', fbVerifyData);
+    if (!fbVerifyRes.ok || fbVerifyData.Status !== 100 || !fbVerifyData.token) {
+      throw new Error('Failed to verify OTP or retrieve reset token in fallback mode');
+    }
+    const fbResetToken = fbVerifyData.token;
+
+    // Fallback Step 5: Reset Password using the token
+    console.log('\n[Fallback Step 5] Resetting password...');
+    const fbNewPassword = 'FallbackPassword987!';
+    const fbResetRes = await fetch(`${apiBase}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: fbResetToken, newPassword: fbNewPassword })
+    });
+    if (!fbResetRes.ok) {
+      throw new Error('Failed to reset password in fallback mode');
+    }
+
+    // Fallback Step 6: Verify login works with fallback reset password
+    console.log('\n[Fallback Step 6] Verifying login with new fallback password...');
+    const fbLoginRes = await fetch(`${apiBase}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ UserName: username, Password: fbNewPassword })
+    });
+    if (!fbLoginRes.ok) {
+      throw new Error('Failed to login using the fallback reset password');
+    }
+    console.log('Fallback login successful!');
+
+  } finally {
+    // Restore original details directly in DB to prevent locking user out
+    console.log('\n[Restore] Restoring user original password hash and email address...');
+    await prisma.user.update({
+      where: { username },
+      data: { 
+        password: originalPasswordHash,
+        email: originalEmail
+      }
+    });
+    console.log('Original user details restored successfully.');
+  }
 
   console.log('\n--- All Password Recovery OTP Flow Tests Passed Successfully ---');
 }

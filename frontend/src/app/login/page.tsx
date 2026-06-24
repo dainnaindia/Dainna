@@ -327,7 +327,32 @@ function LoginForm() {
                       if (response.ok) {
                         setForgotEmail(data.email);
                         setForgotMobile(data.mobile);
-                        setForgotStep(2);
+                        
+                        if (!data.email) {
+                          // No registered email. Go to Step 2 (SMS option).
+                          setForgotStep(2);
+                          setForgotError('No registered email found. Please use SMS verification.');
+                        } else {
+                          // Try sending Email OTP immediately
+                          try {
+                            const sendOtpResponse = await fetch('http://localhost:5000/api/auth/send-otp', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ username: forgotUsername, method: 'email' })
+                            });
+                            const sendOtpData = await sendOtpResponse.json();
+                            if (sendOtpResponse.ok) {
+                              setForgotMethod('email');
+                              setForgotStep(3); // Advance to OTP verification
+                            } else {
+                              setForgotStep(2);
+                              setForgotError(sendOtpData.Msg || 'Email OTP delivery failed. Try SMS.');
+                            }
+                          } catch (sendOtpErr) {
+                            setForgotStep(2);
+                            setForgotError('Email service failed. Try SMS.');
+                          }
+                        }
                       } else {
                         setForgotError(data.Msg || 'Failed to verify username.');
                       }
@@ -367,40 +392,9 @@ function LoginForm() {
               {forgotStep === 2 && (
                 <div className="space-y-4">
                   <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Select one of the options below to receive your 6-digit verification OTP.
+                    Email OTP delivery is unavailable. Click below to receive the 6-digit verification OTP via SMS.
                   </p>
                   <div className="grid grid-cols-1 gap-3">
-                    <button
-                      type="button"
-                      disabled={forgotLoading}
-                      onClick={async () => {
-                        setForgotLoading(true);
-                        setForgotError('');
-                        try {
-                          const response = await fetch('http://localhost:5000/api/auth/send-otp', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username: forgotUsername, method: 'email' })
-                          });
-                          const data = await response.json();
-                          if (response.ok) {
-                            setForgotMethod('email');
-                            setForgotStep(3);
-                          } else {
-                            setForgotError(data.Msg || 'Failed to send OTP.');
-                          }
-                        } catch (err) {
-                          setForgotError('Connection to server failed.');
-                        } finally {
-                          setForgotLoading(false);
-                        }
-                      }}
-                      className="w-full text-left p-3.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg hover:border-slate-700 transition-all flex flex-col gap-1.5 group cursor-pointer"
-                    >
-                      <span className="text-xs font-bold text-white group-hover:text-red-400 transition-colors">Receive OTP via Registered Email</span>
-                      <span className="text-[10px] text-slate-500">{forgotEmail || 'N/A'}</span>
-                    </button>
-
                     <button
                       type="button"
                       disabled={forgotLoading}
@@ -432,6 +426,15 @@ function LoginForm() {
                       <span className="text-[10px] text-slate-500">{forgotMobile || 'N/A'}</span>
                     </button>
                   </div>
+                  <div className="flex justify-start pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setForgotStep(1)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Back
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -449,7 +452,7 @@ function LoginForm() {
                       });
                       const data = await response.json();
                       if (response.ok) {
-                        setForgotSuccess(data.Msg || 'OTP verified successfully! A password reset link has been sent to your registered Email and SMS.');
+                        setForgotSuccess(data.Msg || 'OTP verified successfully! A password reset link has been sent to your registered contact channel.');
                         setForgotStep(4);
                       } else {
                         setForgotError(data.Msg || 'Failed to verify OTP.');
@@ -463,7 +466,7 @@ function LoginForm() {
                   className="space-y-4"
                 >
                   <p className="text-slate-400 text-[11px] leading-relaxed">
-                    Enter the 6-digit OTP sent to your registered {forgotMethod === 'email' ? 'Email' : 'Mobile'}.
+                    Enter the 6-digit OTP sent to your registered {forgotMethod === 'email' ? `Email (${forgotEmail})` : `Mobile (${forgotMobile})`}.
                   </p>
                   <div>
                     <input
@@ -476,10 +479,46 @@ function LoginForm() {
                       required
                     />
                   </div>
+
+                  {forgotMethod === 'email' && forgotMobile && (
+                    <div className="text-center pt-1">
+                      <button
+                        type="button"
+                        disabled={forgotLoading}
+                        onClick={async () => {
+                          setForgotLoading(true);
+                          setForgotError('');
+                          setForgotSuccess('');
+                          try {
+                            const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ username: forgotUsername, method: 'sms' })
+                            });
+                            const data = await response.json();
+                            if (response.ok) {
+                              setForgotMethod('sms');
+                              setForgotSuccess('OTP has been sent to SMS successfully.');
+                            } else {
+                              setForgotError(data.Msg || 'Failed to send OTP.');
+                            }
+                          } catch (err) {
+                            setForgotError('Connection to server failed.');
+                          } finally {
+                            setForgotLoading(false);
+                          }
+                        }}
+                        className="text-[10px] text-red-500 hover:text-red-400 hover:underline transition-colors focus:outline-none cursor-pointer"
+                      >
+                        Didn't receive the OTP? Send OTP via SMS to {forgotMobile}
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center pt-2">
                     <button
                       type="button"
-                      onClick={() => setForgotStep(2)}
+                      onClick={() => setForgotStep(1)}
                       className="px-4 py-2 bg-slate-800 hover:bg-slate-705 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                     >
                       Back
@@ -498,7 +537,7 @@ function LoginForm() {
               {forgotStep === 4 && (
                 <div className="space-y-4 text-center">
                   <p className="text-slate-350 text-xs leading-relaxed">
-                    A secure password reset link has been successfully sent to both your registered Email and SMS.
+                    A secure password reset link has been successfully sent to your registered contact channel (Email with SMS fallback).
                   </p>
                   <p className="text-[10px] text-red-400">
                     Note: The reset link will remain valid for exactly 15 minutes.

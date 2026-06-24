@@ -322,30 +322,48 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<any> => {
       if (!user.email) {
         return res.status(400).json({ Status: 0, Msg: 'No registered email found for this user.' });
       }
-      await sendEmail({
-        to: user.email,
-        subject: 'Your Dainna Verification OTP',
-        text: `Your One-Time Password (OTP) for password recovery is: ${otp}. It is valid for 5 minutes.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
-            <h3 style="color: #1a56db; text-align: center;">Verification OTP</h3>
-            <p>Hello ${user.firstname || 'User'},</p>
-            <p>Your One-Time Password (OTP) for password recovery is:</p>
-            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #1a56db; border-radius: 4px; margin: 15px 0;">
-              ${otp}
+      try {
+        const mailResult = await sendEmail({
+          to: user.email,
+          subject: 'Your Dainna Verification OTP',
+          text: `Your One-Time Password (OTP) for password recovery is: ${otp}. It is valid for 5 minutes.`,
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+              <h3 style="color: #1a56db; text-align: center;">Verification OTP</h3>
+              <p>Hello ${user.firstname || 'User'},</p>
+              <p>Your One-Time Password (OTP) for password recovery is:</p>
+              <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #1a56db; border-radius: 4px; margin: 15px 0;">
+                ${otp}
+              </div>
+              <p style="font-size: 12px; color: #666;">This OTP is valid for 5 minutes. Do not share this OTP with anyone.</p>
             </div>
-            <p style="font-size: 12px; color: #666;">This OTP is valid for 5 minutes. Do not share this OTP with anyone.</p>
-          </div>
-        `
-      });
+          `
+        });
+        if (!mailResult || !mailResult.success) {
+          console.warn(`[OTP] Email service failed to send OTP to ${user.email}. Fail result:`, mailResult);
+          return res.status(400).json({ Status: 0, Msg: 'Email service failed. Please try SMS verification.' });
+        }
+      } catch (err: any) {
+        console.error(`[OTP] Email service threw exception when sending to ${user.email}:`, err);
+        return res.status(500).json({ Status: 0, Msg: 'Email service failed with error. Please try SMS verification.' });
+      }
     } else if (method === 'sms') {
       if (!user.mobile) {
         return res.status(400).json({ Status: 0, Msg: 'No registered mobile number found for this user.' });
       }
-      await sendSMS({
-        to: user.mobile,
-        message: `Your Dainna password recovery OTP is: ${otp}. Valid for 5 minutes.`
-      });
+      try {
+        const smsResult = await sendSMS({
+          to: user.mobile,
+          message: `Your Dainna password recovery OTP is: ${otp}. Valid for 5 minutes.`
+        });
+        if (!smsResult || !smsResult.success) {
+          console.warn(`[OTP] SMS service failed to send OTP to ${user.mobile}. Fail result:`, smsResult);
+          return res.status(400).json({ Status: 0, Msg: 'SMS service failed. Please try again later.' });
+        }
+      } catch (err: any) {
+        console.error(`[OTP] SMS service threw exception when sending to ${user.mobile}:`, err);
+        return res.status(500).json({ Status: 0, Msg: 'SMS service failed with error.' });
+      }
     } else {
       return res.status(400).json({ Status: 0, Msg: 'Invalid verification method.' });
     }
@@ -403,32 +421,53 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<any> => 
     const frontendUrl = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0].trim();
     const resetLink = `${frontendUrl}/reset_password?token=${token}`;
 
+    let resetLinkSentEmail = false;
+
     // Send reset link to Email if present
     if (user.email) {
-      await sendEmail({
-        to: user.email,
-        subject: 'Reset Your Dainna Password',
-        text: `Please click the link below to reset your password:\n${resetLink}\n\nThis link is valid for 15 minutes.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
-            <h3 style="color: #1a56db; text-align: center;">Password Reset Request</h3>
-            <p>Hello ${user.firstname || 'User'},</p>
-            <p>We received a request to reset your password. Please click the button below to proceed:</p>
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${resetLink}" style="display:inline-block;padding:12px 24px;color:#fff;background-color:#1a56db;border-radius:6px;text-decoration:none;font-weight:bold;">Reset Password</a>
+      try {
+        const mailResult = await sendEmail({
+          to: user.email,
+          subject: 'Reset Your Dainna Password',
+          text: `Please click the link below to reset your password:\n${resetLink}\n\nThis link is valid for 15 minutes.`,
+          html: `
+            <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+              <h3 style="color: #1a56db; text-align: center;">Password Reset Request</h3>
+              <p>Hello ${user.firstname || 'User'},</p>
+              <p>We received a request to reset your password. Please click the button below to proceed:</p>
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${resetLink}" style="display:inline-block;padding:12px 24px;color:#fff;background-color:#1a56db;border-radius:6px;text-decoration:none;font-weight:bold;">Reset Password</a>
+              </div>
+              <p style="font-size: 12px; color: #666;">This link is valid for 15 minutes. If you did not request this, you can ignore this email.</p>
             </div>
-            <p style="font-size: 12px; color: #666;">This link is valid for 15 minutes. If you did not request this, you can ignore this email.</p>
-          </div>
-        `
-      }).catch(err => console.error('Failed to send reset link email:', err));
+          `
+        });
+        if (mailResult && mailResult.success) {
+          resetLinkSentEmail = true;
+          console.log(`[Reset Link] Successfully sent reset link via Email to ${user.email}`);
+        } else {
+          console.warn(`[Reset Link] Email service failed to send reset link to ${user.email}. Fail result:`, mailResult);
+        }
+      } catch (err) {
+        console.error('Failed to send reset link email, falling back to SMS:', err);
+      }
     }
 
-    // Send reset link to SMS if present
-    if (user.mobile) {
-      await sendSMS({
-        to: user.mobile,
-        message: `Reset your Dainna password by clicking this link: ${resetLink}. Link expires in 15 mins.`
-      }).catch(err => console.error('Failed to send reset link SMS:', err));
+    // Send reset link to SMS if email failed or was not registered
+    if (!resetLinkSentEmail && user.mobile) {
+      try {
+        const smsResult = await sendSMS({
+          to: user.mobile,
+          message: `Reset your Dainna password by clicking this link: ${resetLink}. Link expires in 15 mins.`
+        });
+        if (smsResult && smsResult.success) {
+          console.log(`[Reset Link] Successfully sent fallback reset link via SMS to ${user.mobile}`);
+        } else {
+          console.error(`[Reset Link] SMS fallback service failed to send reset link to ${user.mobile}. Fail result:`, smsResult);
+        }
+      } catch (err) {
+        console.error('Failed to send reset link SMS:', err);
+      }
     }
 
     const responsePayload: any = { Status: 100, Msg: 'OTP verified successfully. A secure password reset link has been sent to your registered Email and SMS.' };
