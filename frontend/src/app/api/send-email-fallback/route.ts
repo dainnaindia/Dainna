@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Fetch the pending email content from the backend securely
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     console.log(`[Vercel Mailer] Fetching pending email payload from backend using token...`);
     const backendRes = await fetch(`${backendUrl}/api/auth/fetch-pending-email?token=${token}`);
     
