@@ -561,7 +561,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
 
-                      {user.userTypeId !== 1 && (
+                      {user.userTypeId === 4 && (
                         <div className="pt-2 border-t border-slate-800/40 mt-6">
                           <div className="flex items-center gap-2 mb-2">
                             <KeyRound size={16} className="text-blue-500" />

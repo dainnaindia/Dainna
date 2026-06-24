@@ -704,10 +704,7 @@ export default function RegAgentPage() {
                     <span className="text-slate-500">Aadhar card No:</span>
                     <span className="text-slate-200 font-semibold">{viewingAgent.aadharNo || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">Secure PIN:</span>
-                    <span className="font-mono text-emerald-400 font-semibold">{viewingAgent.securePin || 'N/A'}</span>
-                  </div>
+
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">Registration Date:</span>
                     <span className="text-slate-200 font-semibold">{formatDate(viewingAgent.addeddate)}</span>
@@ -902,7 +899,7 @@ export default function RegAgentPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-400 text-xs font-semibold mb-1">State ID</label>
                   <select
@@ -923,16 +920,6 @@ export default function RegAgentPage() {
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none"
                     value={regCity}
                     onChange={(e) => setRegCity(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 text-xs font-semibold mb-1">Secure PIN</label>
-                  <input
-                    type="text"
-                    placeholder="4-digit secure pin"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white text-sm focus:outline-none"
-                    value={securePin}
-                    onChange={(e) => setSecurePin(e.target.value)}
                   />
                 </div>
               </div>
