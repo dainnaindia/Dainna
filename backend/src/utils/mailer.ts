@@ -11,6 +11,8 @@ const transporter = nodemailer.createTransport({
     user: emailUser,
     pass: emailPassword,
   },
+  connectionTimeout: 3000, // 3 seconds connection timeout
+  greetingTimeout: 3000,   // 3 seconds greeting timeout
 });
 
 export interface SendEmailOptions {
