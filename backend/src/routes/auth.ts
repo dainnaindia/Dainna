@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { sendEmail } from '../utils/mailer';
+import { sendSMS } from '../utils/sms';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -244,6 +245,235 @@ router.post('/send-verification-email', async (req: Request, res: Response): Pro
   } catch (error) {
     console.error('Send verification email error:', error);
     return res.status(500).json({ Status: 0, Msg: 'Internal Server Error' });
+  }
+});
+
+const otpStore = new Map<string, { otp: string; expires: number; method?: string }>();
+const resetTokenStore = new Map<string, { username: string; expires: number }>();
+
+function maskEmail(email: string): string {
+  if (!email) return '';
+  const [local, domain] = email.split('@');
+  if (!domain) return email;
+  if (local.length <= 2) {
+    return `${local[0]}***@${domain}`;
+  }
+  return `${local[0]}${'*'.repeat(local.length - 2)}${local[local.length - 1]}@${domain}`;
+}
+
+function maskMobile(mobile: string): string {
+  if (!mobile) return '';
+  const clean = mobile.trim();
+  if (clean.length <= 4) {
+    return '*'.repeat(clean.length);
+  }
+  return '*'.repeat(clean.length - 4) + clean.slice(-4);
+}
+
+// POST /api/auth/forgot-password (Check username and return masked details)
+router.post('/forgot-password', async (req: Request, res: Response): Promise<any> => {
+  const { username } = req.body;
+  if (!username) {
+    return res.status(400).json({ Status: 0, Msg: 'Username is required.' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (!user) {
+      return res.status(404).json({ Status: 0, Msg: 'Username not registered in the system.' });
+    }
+
+    return res.json({
+      Status: 100,
+      email: maskEmail(user.email || ''),
+      mobile: maskMobile(user.mobile || '')
+    });
+  } catch (error) {
+    console.error('Forgot password lookup error:', error);
+    return res.status(500).json({ Status: 0, Msg: 'Internal Server Error' });
+  }
+});
+
+// POST /api/auth/send-otp (Send 6-digit OTP via SMS or Email)
+router.post('/send-otp', async (req: Request, res: Response): Promise<any> => {
+  const { username, method } = req.body;
+  if (!username || !method) {
+    return res.status(400).json({ Status: 0, Msg: 'Username and verification method are required.' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (!user) {
+      return res.status(404).json({ Status: 0, Msg: 'User not found.' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    otpStore.set(username, { otp, expires, method });
+
+    if (method === 'email') {
+      if (!user.email) {
+        return res.status(400).json({ Status: 0, Msg: 'No registered email found for this user.' });
+      }
+      await sendEmail({
+        to: user.email,
+        subject: 'Your Dainna Verification OTP',
+        text: `Your One-Time Password (OTP) for password recovery is: ${otp}. It is valid for 5 minutes.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+            <h3 style="color: #1a56db; text-align: center;">Verification OTP</h3>
+            <p>Hello ${user.firstname || 'User'},</p>
+            <p>Your One-Time Password (OTP) for password recovery is:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #1a56db; border-radius: 4px; margin: 15px 0;">
+              ${otp}
+            </div>
+            <p style="font-size: 12px; color: #666;">This OTP is valid for 5 minutes. Do not share this OTP with anyone.</p>
+          </div>
+        `
+      });
+    } else if (method === 'sms') {
+      if (!user.mobile) {
+        return res.status(400).json({ Status: 0, Msg: 'No registered mobile number found for this user.' });
+      }
+      await sendSMS({
+        to: user.mobile,
+        message: `Your Dainna password recovery OTP is: ${otp}. Valid for 5 minutes.`
+      });
+    } else {
+      return res.status(400).json({ Status: 0, Msg: 'Invalid verification method.' });
+    }
+
+    const responsePayload: any = { Status: 100, Msg: 'OTP sent successfully.' };
+    if (process.env.NODE_ENV !== 'production') {
+      responsePayload.otp = otp;
+    }
+    return res.json(responsePayload);
+  } catch (error: any) {
+    console.error('Send OTP error:', error);
+    return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/auth/verify-otp (Verify OTP and send password reset link)
+router.post('/verify-otp', async (req: Request, res: Response): Promise<any> => {
+  const { username, otp } = req.body;
+  if (!username || !otp) {
+    return res.status(400).json({ Status: 0, Msg: 'Username and OTP are required.' });
+  }
+
+  try {
+    const record = otpStore.get(username);
+    if (!record) {
+      return res.status(400).json({ Status: 0, Msg: 'No OTP requested or OTP has expired.' });
+    }
+
+    if (Date.now() > record.expires) {
+      otpStore.delete(username);
+      return res.status(400).json({ Status: 0, Msg: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ Status: 0, Msg: 'Incorrect OTP. Please check and try again.' });
+    }
+
+    // OTP verified! Clean up.
+    otpStore.delete(username);
+
+    // Generate secure password reset token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    resetTokenStore.set(token, { username, expires });
+
+    // Send reset link
+    const user = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (!user) {
+      return res.status(404).json({ Status: 0, Msg: 'User not found.' });
+    }
+
+    const frontendUrl = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0].trim();
+    const resetLink = `${frontendUrl}/reset_password?token=${token}`;
+
+    // Send reset link to Email if present
+    if (user.email) {
+      await sendEmail({
+        to: user.email,
+        subject: 'Reset Your Dainna Password',
+        text: `Please click the link below to reset your password:\n${resetLink}\n\nThis link is valid for 15 minutes.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+            <h3 style="color: #1a56db; text-align: center;">Password Reset Request</h3>
+            <p>Hello ${user.firstname || 'User'},</p>
+            <p>We received a request to reset your password. Please click the button below to proceed:</p>
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="${resetLink}" style="display:inline-block;padding:12px 24px;color:#fff;background-color:#1a56db;border-radius:6px;text-decoration:none;font-weight:bold;">Reset Password</a>
+            </div>
+            <p style="font-size: 12px; color: #666;">This link is valid for 15 minutes. If you did not request this, you can ignore this email.</p>
+          </div>
+        `
+      }).catch(err => console.error('Failed to send reset link email:', err));
+    }
+
+    // Send reset link to SMS if present
+    if (user.mobile) {
+      await sendSMS({
+        to: user.mobile,
+        message: `Reset your Dainna password by clicking this link: ${resetLink}. Link expires in 15 mins.`
+      }).catch(err => console.error('Failed to send reset link SMS:', err));
+    }
+
+    const responsePayload: any = { Status: 100, Msg: 'OTP verified successfully. A secure password reset link has been sent to your registered Email and SMS.' };
+    if (process.env.NODE_ENV !== 'production') {
+      responsePayload.token = token;
+    }
+    return res.json(responsePayload);
+  } catch (error: any) {
+    console.error('Verify OTP error:', error);
+    return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/auth/reset-password (Reset password with token)
+router.post('/reset-password', async (req: Request, res: Response): Promise<any> => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({ Status: 0, Msg: 'Token and new password are required.' });
+  }
+
+  try {
+    const record = resetTokenStore.get(token);
+    if (!record) {
+      return res.status(400).json({ Status: 0, Msg: 'Invalid or expired password reset token.' });
+    }
+
+    if (Date.now() > record.expires) {
+      resetTokenStore.delete(token);
+      return res.status(400).json({ Status: 0, Msg: 'Password reset token has expired.' });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { username: record.username },
+      data: { password: hashed, wrongPwdCount: 0 }
+    });
+
+    // Clean up
+    resetTokenStore.delete(token);
+
+    return res.json({ Status: 100, Msg: 'Password updated successfully. You can now login with your new password.' });
+  } catch (error: any) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
   }
 });
 

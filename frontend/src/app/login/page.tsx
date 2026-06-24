@@ -22,6 +22,18 @@ function LoginForm() {
   const [verificationSuccess, setVerificationSuccess] = useState<boolean | null>(null);
   const [verifying, setVerifying] = useState(false);
 
+  // Forgot Password modal states
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotUsername, setForgotUsername] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMobile, setForgotMobile] = useState('');
+  const [forgotStep, setForgotStep] = useState(1); // 1 = enter username, 2 = select method, 3 = enter OTP, 4 = complete success
+  const [forgotMethod, setForgotMethod] = useState<'email' | 'sms' | null>(null);
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
+
   useEffect(() => {
     const verifyToken = searchParams.get('verify');
     if (verifyToken) {
@@ -236,7 +248,7 @@ function LoginForm() {
                 <div />
               )}
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => alert('Please contact administrator to reset password.')} className="hover:text-red-300 transition-colors">Forgot Password?</button>
+                <button type="button" onClick={() => setShowForgotModal(true)} className="hover:text-red-300 transition-colors">Forgot Password?</button>
                 <button type="button" onClick={() => alert('Please contact administrator to find username.')} className="hover:text-red-300 transition-colors">Forgot Username?</button>
               </div>
             </div>
@@ -261,6 +273,258 @@ function LoginForm() {
           </form>
         </div>
       </section>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full overflow-hidden shadow-2xl relative">
+            <div className="bg-red-600/10 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <h4 className="font-bold text-white font-sans text-xs tracking-wide">PASSWORD RECOVERY</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotModal(false);
+                  setForgotStep(1);
+                  setForgotUsername('');
+                  setForgotOtp('');
+                  setForgotError('');
+                  setForgotSuccess('');
+                }}
+                className="text-slate-400 hover:text-white transition-colors text-sm font-bold focus:outline-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {forgotError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{forgotError}</span>
+                </div>
+              )}
+
+              {forgotSuccess && (
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{forgotSuccess}</span>
+                </div>
+              )}
+
+              {forgotStep === 1 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setForgotLoading(true);
+                    setForgotError('');
+                    try {
+                      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: forgotUsername })
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setForgotEmail(data.email);
+                        setForgotMobile(data.mobile);
+                        setForgotStep(2);
+                      } else {
+                        setForgotError(data.Msg || 'Failed to verify username.');
+                      }
+                    } catch (err) {
+                      setForgotError('Connection to server failed.');
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Please enter your registered Username to begin password recovery.
+                  </p>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Enter Username"
+                      className="w-full px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-slate-105 placeholder-slate-650 focus:outline-none focus:border-red-500 text-xs"
+                      value={forgotUsername}
+                      onChange={(e) => setForgotUsername(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {forgotLoading ? 'Verifying...' : 'Next'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {forgotStep === 2 && (
+                <div className="space-y-4">
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Select one of the options below to receive your 6-digit verification OTP.
+                  </p>
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      type="button"
+                      disabled={forgotLoading}
+                      onClick={async () => {
+                        setForgotLoading(true);
+                        setForgotError('');
+                        try {
+                          const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: forgotUsername, method: 'email' })
+                          });
+                          const data = await response.json();
+                          if (response.ok) {
+                            setForgotMethod('email');
+                            setForgotStep(3);
+                          } else {
+                            setForgotError(data.Msg || 'Failed to send OTP.');
+                          }
+                        } catch (err) {
+                          setForgotError('Connection to server failed.');
+                        } finally {
+                          setForgotLoading(false);
+                        }
+                      }}
+                      className="w-full text-left p-3.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg hover:border-slate-700 transition-all flex flex-col gap-1.5 group cursor-pointer"
+                    >
+                      <span className="text-xs font-bold text-white group-hover:text-red-400 transition-colors">Receive OTP via Registered Email</span>
+                      <span className="text-[10px] text-slate-500">{forgotEmail || 'N/A'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={forgotLoading}
+                      onClick={async () => {
+                        setForgotLoading(true);
+                        setForgotError('');
+                        try {
+                          const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: forgotUsername, method: 'sms' })
+                          });
+                          const data = await response.json();
+                          if (response.ok) {
+                            setForgotMethod('sms');
+                            setForgotStep(3);
+                          } else {
+                            setForgotError(data.Msg || 'Failed to send OTP.');
+                          }
+                        } catch (err) {
+                          setForgotError('Connection to server failed.');
+                        } finally {
+                          setForgotLoading(false);
+                        }
+                      }}
+                      className="w-full text-left p-3.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg hover:border-slate-700 transition-all flex flex-col gap-1.5 group cursor-pointer"
+                    >
+                      <span className="text-xs font-bold text-white group-hover:text-red-400 transition-colors">Receive OTP via Registered SMS</span>
+                      <span className="text-[10px] text-slate-500">{forgotMobile || 'N/A'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {forgotStep === 3 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setForgotLoading(true);
+                    setForgotError('');
+                    try {
+                      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: forgotUsername, otp: forgotOtp })
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setForgotSuccess(data.Msg || 'OTP verified successfully! A password reset link has been sent to your registered Email and SMS.');
+                        setForgotStep(4);
+                      } else {
+                        setForgotError(data.Msg || 'Failed to verify OTP.');
+                      }
+                    } catch (err) {
+                      setForgotError('Connection to server failed.');
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Enter the 6-digit OTP sent to your registered {forgotMethod === 'email' ? 'Email' : 'Mobile'}.
+                  </p>
+                  <div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="Enter 6-digit OTP"
+                      className="w-full px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-red-500 text-center tracking-widest font-bold text-base focus:ring-1 focus:ring-red-500/30"
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setForgotStep(2)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-705 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {forgotLoading ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {forgotStep === 4 && (
+                <div className="space-y-4 text-center">
+                  <p className="text-slate-350 text-xs leading-relaxed">
+                    A secure password reset link has been successfully sent to both your registered Email and SMS.
+                  </p>
+                  <p className="text-[10px] text-red-400">
+                    Note: The reset link will remain valid for exactly 15 minutes.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotModal(false);
+                        setForgotStep(1);
+                        setForgotUsername('');
+                        setForgotOtp('');
+                        setForgotError('');
+                        setForgotSuccess('');
+                      }}
+                      className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
