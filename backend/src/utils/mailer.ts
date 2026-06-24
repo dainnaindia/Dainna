@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 const emailUser = process.env.EMAIL_USER || 'dainnaindia@gmail.com';
 const emailPassword = process.env.EMAIL_PASSWORD || 'lkvo uzvk mijn cfgk';
@@ -22,11 +23,14 @@ export interface SendEmailOptions {
   html?: string;
 }
 
+// In-memory store for emails that failed SMTP locally and need to be pulled by Vercel
+export const pendingEmailsStore = new Map<string, { to: string; subject: string; text: string; html: string; expires: number }>();
+
 /**
  * Sends an email using the configured SMTP transporter.
  * If EMAIL_PASSWORD is not configured, it prints a fallback warning with the email contents.
  */
-export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
+export async function sendEmail({ to, subject, text, html }: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: any; vercelFallbackToken?: string }> {
   const from = process.env.EMAIL_FROM || `"Dainna" <${emailUser}>`;
 
   if (!emailPassword) {
@@ -41,6 +45,9 @@ export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
   }
 
   try {
+    if (to.includes('simulate-failure')) {
+      throw new Error('Simulated SMTP transport failure');
+    }
     const info = await transporter.sendMail({
       from,
       to,
@@ -52,6 +59,18 @@ export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error(`[Mailer Error] Failed to send email to ${to}:`, error);
-    return { success: false, error };
+
+    // Generate fallback token and store email payload for Vercel pull
+    const fallbackToken = crypto.randomBytes(16).toString('hex');
+    pendingEmailsStore.set(fallbackToken, {
+      to,
+      subject,
+      text,
+      html: html || '',
+      expires: Date.now() + 2 * 60 * 1000 // 2 minutes expiry
+    });
+
+    console.log(`[Mailer Fallback] Generated Vercel SMTP fallback token: ${fallbackToken}`);
+    return { success: false, error, vercelFallbackToken: fallbackToken };
   }
 }

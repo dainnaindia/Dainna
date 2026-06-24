@@ -43,6 +43,21 @@ function LoginForm() {
   const [forgotUserError, setForgotUserError] = useState('');
   const [forgotUserSuccess, setForgotUserSuccess] = useState('');
 
+  const triggerVercelFallback = async (email: string, token: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/send-email-fallback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token })
+      });
+      const data = await response.json();
+      return response.ok && data.success;
+    } catch (err) {
+      console.error('Vercel email fallback trigger failed:', err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const verifyToken = searchParams.get('verify');
     if (verifyToken) {
@@ -351,8 +366,19 @@ function LoginForm() {
                             });
                             const sendOtpData = await sendOtpResponse.json();
                             if (sendOtpResponse.ok) {
-                              setForgotMethod('email');
-                              setForgotStep(3); // Advance to OTP verification
+                              if (sendOtpData.vercelFallbackToken) {
+                                const fallbackSuccess = await triggerVercelFallback(data.email, sendOtpData.vercelFallbackToken);
+                                if (fallbackSuccess) {
+                                  setForgotMethod('email');
+                                  setForgotStep(3); // Advance to OTP verification
+                                } else {
+                                  setForgotStep(2);
+                                  setForgotError('Email OTP delivery failed. Try SMS.');
+                                }
+                              } else {
+                                setForgotMethod('email');
+                                setForgotStep(3); // Advance to OTP verification
+                              }
                             } else {
                               setForgotStep(2);
                               setForgotError(sendOtpData.Msg || 'Email OTP delivery failed. Try SMS.');
@@ -461,8 +487,33 @@ function LoginForm() {
                       });
                       const data = await response.json();
                       if (response.ok) {
-                        setForgotSuccess(data.Msg || 'OTP verified successfully! A password reset link has been sent to your registered contact channel.');
-                        setForgotStep(4);
+                        if (data.vercelFallbackToken) {
+                          const fallbackSuccess = await triggerVercelFallback(data.fallbackEmail, data.vercelFallbackToken);
+                          if (fallbackSuccess) {
+                            setForgotSuccess('OTP verified successfully! A password reset link has been sent to your email.');
+                            setForgotStep(4);
+                          } else {
+                            // If Vercel fallback fails, request SMS reset link from Render backend
+                            try {
+                              const smsFallbackRes = await fetch('http://localhost:5000/api/auth/send-reset-link-sms', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ username: forgotUsername, token: data.token })
+                              });
+                              if (smsFallbackRes.ok) {
+                                setForgotSuccess('Email failed. A secure password reset link has been sent via SMS.');
+                                setForgotStep(4);
+                              } else {
+                                setForgotError('Failed to send reset link via Email and SMS.');
+                              }
+                            } catch (smsErr) {
+                              setForgotError('Failed to trigger SMS fallback.');
+                            }
+                          }
+                        } else {
+                          setForgotSuccess(data.Msg || 'OTP verified successfully! A password reset link has been sent to your registered contact channel.');
+                          setForgotStep(4);
+                        }
                       } else {
                         setForgotError(data.Msg || 'Failed to verify OTP.');
                       }
@@ -625,7 +676,16 @@ function LoginForm() {
                       });
                       const data = await response.json();
                       if (response.ok) {
-                        setForgotUserStep(2);
+                        if (data.vercelFallbackToken) {
+                          const fallbackSuccess = await triggerVercelFallback(forgotUserEmail, data.vercelFallbackToken);
+                          if (fallbackSuccess) {
+                            setForgotUserStep(2);
+                          } else {
+                            setForgotUserError('Failed to send OTP via Vercel.');
+                          }
+                        } else {
+                          setForgotUserStep(2);
+                        }
                       } else {
                         setForgotUserError(data.Msg || 'Failed to verify email address.');
                       }
@@ -676,8 +736,18 @@ function LoginForm() {
                       });
                       const data = await response.json();
                       if (response.ok) {
-                        setForgotUserSuccess(data.Msg || 'Verification successful! Your username(s) have been sent to your email.');
-                        setForgotUserStep(3);
+                        if (data.vercelFallbackToken) {
+                          const fallbackSuccess = await triggerVercelFallback(data.fallbackEmail, data.vercelFallbackToken);
+                          if (fallbackSuccess) {
+                            setForgotUserSuccess('Verification successful! Your username(s) have been sent to your email.');
+                            setForgotUserStep(3);
+                          } else {
+                            setForgotUserError('Failed to send username list via Vercel.');
+                          }
+                        } else {
+                          setForgotUserSuccess(data.Msg || 'Verification successful! Your username(s) have been sent to your email.');
+                          setForgotUserStep(3);
+                        }
                       } else {
                         setForgotUserError(data.Msg || 'Failed to verify OTP.');
                       }

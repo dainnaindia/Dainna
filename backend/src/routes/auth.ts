@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { sendEmail } from '../utils/mailer';
+import { sendEmail, pendingEmailsStore } from '../utils/mailer';
 import { sendSMS } from '../utils/sms';
 
 const router = Router();
@@ -341,6 +341,18 @@ router.post('/send-otp', async (req: Request, res: Response): Promise<any> => {
         });
         if (!mailResult || !mailResult.success) {
           console.warn(`[OTP] Email service failed to send OTP to ${user.email}. Fail result:`, mailResult);
+          if (mailResult && mailResult.vercelFallbackToken) {
+            const responsePayload: any = {
+              Status: 100,
+              Msg: 'Email OTP queued for Vercel fallback.',
+              vercelFallbackToken: mailResult.vercelFallbackToken,
+              fallbackEmail: user.email
+            };
+            if (process.env.NODE_ENV !== 'production') {
+              responsePayload.otp = otp;
+            }
+            return res.json(responsePayload);
+          }
           return res.status(400).json({ Status: 0, Msg: 'Email service failed. Please try SMS verification.' });
         }
       } catch (err: any) {
@@ -422,6 +434,7 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<any> => 
     const resetLink = `${frontendUrl}/reset_password?token=${token}`;
 
     let resetLinkSentEmail = false;
+    let fallbackToken: string | undefined = undefined;
 
     // Send reset link to Email if present
     if (user.email) {
@@ -447,10 +460,26 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<any> => 
           console.log(`[Reset Link] Successfully sent reset link via Email to ${user.email}`);
         } else {
           console.warn(`[Reset Link] Email service failed to send reset link to ${user.email}. Fail result:`, mailResult);
+          if (mailResult && mailResult.vercelFallbackToken) {
+            fallbackToken = mailResult.vercelFallbackToken;
+          }
         }
       } catch (err) {
         console.error('Failed to send reset link email, falling back to SMS:', err);
       }
+    }
+
+    if (fallbackToken) {
+      const responsePayload: any = {
+        Status: 100,
+        Msg: 'Email reset link queued for Vercel fallback.',
+        vercelFallbackToken: fallbackToken,
+        fallbackEmail: user.email
+      };
+      if (process.env.NODE_ENV !== 'production') {
+        responsePayload.token = token;
+      }
+      return res.json(responsePayload);
     }
 
     // Send reset link to SMS if email failed or was not registered
@@ -478,6 +507,46 @@ router.post('/verify-otp', async (req: Request, res: Response): Promise<any> => 
   } catch (error: any) {
     console.error('Verify OTP error:', error);
     return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/auth/send-reset-link-sms (Request SMS reset link fallback if Vercel email fails)
+router.post('/send-reset-link-sms', async (req: Request, res: Response): Promise<any> => {
+  const { username, token } = req.body;
+  if (!username || !token) {
+    return res.status(400).json({ Status: 0, Msg: 'Username and token are required.' });
+  }
+
+  try {
+    const record = resetTokenStore.get(token);
+    if (!record || record.username !== username) {
+      return res.status(400).json({ Status: 0, Msg: 'Invalid or expired password reset token.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (!user || !user.mobile) {
+      return res.status(400).json({ Status: 0, Msg: 'User mobile not found.' });
+    }
+
+    const frontendUrl = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0].trim();
+    const resetLink = `${frontendUrl}/reset_password?token=${token}`;
+
+    const smsResult = await sendSMS({
+      to: user.mobile,
+      message: `Reset your Dainna password by clicking this link: ${resetLink}. Link expires in 15 mins.`
+    });
+
+    if (smsResult && smsResult.success) {
+      return res.json({ Status: 100, Msg: 'Reset link sent successfully via SMS.' });
+    } else {
+      return res.status(400).json({ Status: 0, Msg: 'Failed to send SMS fallback.' });
+    }
+  } catch (error: any) {
+    console.error('Send reset link SMS error:', error);
+    return res.status(500).json({ Status: 0, Msg: 'Internal Server Error' });
   }
 });
 
@@ -561,6 +630,18 @@ router.post('/forgot-username', async (req: Request, res: Response): Promise<any
 
       if (!mailResult || !mailResult.success) {
         console.warn(`[Forgot Username] Email service failed to send OTP to ${email}. Fail result:`, mailResult);
+        if (mailResult && mailResult.vercelFallbackToken) {
+          const responsePayload: any = {
+            Status: 100,
+            Msg: 'Email OTP queued for Vercel fallback.',
+            vercelFallbackToken: mailResult.vercelFallbackToken,
+            fallbackEmail: email.trim()
+          };
+          if (process.env.NODE_ENV !== 'production') {
+            responsePayload.otp = otp;
+          }
+          return res.json(responsePayload);
+        }
         return res.status(500).json({ Status: 0, Msg: 'Failed to send OTP email. Please try again later.' });
       }
     } catch (err: any) {
@@ -640,6 +721,14 @@ router.post('/verify-username-otp', async (req: Request, res: Response): Promise
 
       if (!mailResult || !mailResult.success) {
         console.warn(`[Verify Username OTP] Email service failed to send usernames to ${email}. Fail result:`, mailResult);
+        if (mailResult && mailResult.vercelFallbackToken) {
+          return res.json({
+            Status: 100,
+            Msg: 'Username recovery email queued for Vercel fallback.',
+            vercelFallbackToken: mailResult.vercelFallbackToken,
+            fallbackEmail: email.trim()
+          });
+        }
         return res.status(500).json({ Status: 0, Msg: 'Failed to send username recovery email. Please try again later.' });
       }
     } catch (err: any) {
@@ -652,6 +741,29 @@ router.post('/verify-username-otp', async (req: Request, res: Response): Promise
     console.error('Verify username OTP error:', error);
     return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
   }
+});
+
+// GET /api/auth/fetch-pending-email (Retrieve and delete a pending email payload)
+router.get('/fetch-pending-email', (req: Request, res: Response): any => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ success: false, error: 'Token is required' });
+  }
+
+  const payload = pendingEmailsStore.get(token as string);
+  if (!payload) {
+    return res.status(404).json({ success: false, error: 'Invalid or expired token' });
+  }
+
+  if (Date.now() > payload.expires) {
+    pendingEmailsStore.delete(token as string);
+    return res.status(400).json({ success: false, error: 'Token has expired' });
+  }
+
+  // Delete after single use
+  pendingEmailsStore.delete(token as string);
+
+  return res.json({ success: true, payload });
 });
 
 export default router;
