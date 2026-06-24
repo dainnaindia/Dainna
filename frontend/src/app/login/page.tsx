@@ -34,6 +34,15 @@ function LoginForm() {
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState('');
 
+  // Forgot Username modal states
+  const [showForgotUsernameModal, setShowForgotUsernameModal] = useState(false);
+  const [forgotUserEmail, setForgotUserEmail] = useState('');
+  const [forgotUserStep, setForgotUserStep] = useState(1); // 1 = enter email, 2 = enter OTP, 3 = complete success
+  const [forgotUserOtp, setForgotUserOtp] = useState('');
+  const [forgotUserLoading, setForgotUserLoading] = useState(false);
+  const [forgotUserError, setForgotUserError] = useState('');
+  const [forgotUserSuccess, setForgotUserSuccess] = useState('');
+
   useEffect(() => {
     const verifyToken = searchParams.get('verify');
     if (verifyToken) {
@@ -249,7 +258,7 @@ function LoginForm() {
               )}
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setShowForgotModal(true)} className="hover:text-red-300 transition-colors">Forgot Password?</button>
-                <button type="button" onClick={() => alert('Please contact administrator to find username.')} className="hover:text-red-300 transition-colors">Forgot Username?</button>
+                <button type="button" onClick={() => setShowForgotUsernameModal(true)} className="hover:text-red-300 transition-colors">Forgot Username?</button>
               </div>
             </div>
 
@@ -552,6 +561,182 @@ function LoginForm() {
                         setForgotOtp('');
                         setForgotError('');
                         setForgotSuccess('');
+                      }}
+                      className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forgot Username Modal */}
+      {showForgotUsernameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full overflow-hidden shadow-2xl relative">
+            <div className="bg-red-600/10 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <h4 className="font-bold text-white font-sans text-xs tracking-wide">USERNAME RECOVERY</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotUsernameModal(false);
+                  setForgotUserStep(1);
+                  setForgotUserEmail('');
+                  setForgotUserOtp('');
+                  setForgotUserError('');
+                  setForgotUserSuccess('');
+                }}
+                className="text-slate-400 hover:text-white transition-colors text-sm font-bold focus:outline-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {forgotUserError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{forgotUserError}</span>
+                </div>
+              )}
+
+              {forgotUserSuccess && (
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{forgotUserSuccess}</span>
+                </div>
+              )}
+
+              {forgotUserStep === 1 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setForgotUserLoading(true);
+                    setForgotUserError('');
+                    try {
+                      const response = await fetch('http://localhost:5000/api/auth/forgot-username', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: forgotUserEmail })
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setForgotUserStep(2);
+                      } else {
+                        setForgotUserError(data.Msg || 'Failed to verify email address.');
+                      }
+                    } catch (err) {
+                      setForgotUserError('Connection to server failed.');
+                    } finally {
+                      setForgotUserLoading(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Please enter your registered Email address. We will send a 6-digit OTP to verify your identity.
+                  </p>
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Enter Registered Email"
+                      className="w-full px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 text-xs"
+                      value={forgotUserEmail}
+                      onChange={(e) => setForgotUserEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={forgotUserLoading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {forgotUserLoading ? 'Sending OTP...' : 'Send OTP'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {forgotUserStep === 2 && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setForgotUserLoading(true);
+                    setForgotUserError('');
+                    try {
+                      const response = await fetch('http://localhost:5000/api/auth/verify-username-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: forgotUserEmail, otp: forgotUserOtp })
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setForgotUserSuccess(data.Msg || 'Verification successful! Your username(s) have been sent to your email.');
+                        setForgotUserStep(3);
+                      } else {
+                        setForgotUserError(data.Msg || 'Failed to verify OTP.');
+                      }
+                    } catch (err) {
+                      setForgotUserError('Connection to server failed.');
+                    } finally {
+                      setForgotUserLoading(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    Enter the 6-digit OTP sent to your registered Email address ({forgotUserEmail}).
+                  </p>
+                  <div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="Enter 6-digit OTP"
+                      className="w-full px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-red-500 text-center tracking-widest font-bold text-base focus:ring-1 focus:ring-red-500/30"
+                      value={forgotUserOtp}
+                      onChange={(e) => setForgotUserOtp(e.target.value.replace(/\D/g, ''))}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setForgotUserStep(1)}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-705 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotUserLoading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {forgotUserLoading ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {forgotUserStep === 3 && (
+                <div className="space-y-4 text-center">
+                  <p className="text-slate-350 text-xs leading-relaxed">
+                    Your registered username(s) have been successfully sent to your email address: <strong>{forgotUserEmail}</strong>.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotUsernameModal(false);
+                        setForgotUserStep(1);
+                        setForgotUserEmail('');
+                        setForgotUserOtp('');
+                        setForgotUserError('');
+                        setForgotUserSuccess('');
                       }}
                       className="px-6 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                     >

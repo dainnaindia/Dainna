@@ -516,4 +516,142 @@ router.post('/reset-password', async (req: Request, res: Response): Promise<any>
   }
 });
 
+const usernameOtpStore = new Map<string, { otp: string; expires: number }>();
+
+// POST /api/auth/forgot-username (Send OTP to registered email)
+router.post('/forgot-username', async (req: Request, res: Response): Promise<any> => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ Status: 0, Msg: 'Email address is required.' });
+  }
+
+  try {
+    // Check if there is at least one user with this email
+    const users = await prisma.user.findMany({
+      where: { email: email.trim() }
+    });
+
+    if (users.length === 0) {
+      return res.status(404).json({ Status: 0, Msg: 'No account registered with this email address.' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+    usernameOtpStore.set(email.trim(), { otp, expires });
+
+    // Send OTP via Email
+    try {
+      const mailResult = await sendEmail({
+        to: email.trim(),
+        subject: 'Your Dainna Username Recovery OTP',
+        text: `Your One-Time Password (OTP) for username recovery is: ${otp}. It is valid for 5 minutes.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+            <h3 style="color: #1a56db; text-align: center;">Username Recovery OTP</h3>
+            <p>Hello,</p>
+            <p>Your One-Time Password (OTP) for username recovery is:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #1a56db; border-radius: 4px; margin: 15px 0;">
+              ${otp}
+            </div>
+            <p style="font-size: 12px; color: #666;">This OTP is valid for 5 minutes. Do not share this OTP with anyone.</p>
+          </div>
+        `
+      });
+
+      if (!mailResult || !mailResult.success) {
+        console.warn(`[Forgot Username] Email service failed to send OTP to ${email}. Fail result:`, mailResult);
+        return res.status(500).json({ Status: 0, Msg: 'Failed to send OTP email. Please try again later.' });
+      }
+    } catch (err: any) {
+      console.error(`[Forgot Username] Email service threw exception when sending to ${email}:`, err);
+      return res.status(500).json({ Status: 0, Msg: 'Email service error occurred.' });
+    }
+
+    const responsePayload: any = { Status: 100, Msg: 'OTP sent successfully to your registered email.' };
+    if (process.env.NODE_ENV !== 'production') {
+      responsePayload.otp = otp;
+    }
+    return res.json(responsePayload);
+  } catch (error: any) {
+    console.error('Forgot username error:', error);
+    return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/auth/verify-username-otp (Verify OTP and send email containing username(s))
+router.post('/verify-username-otp', async (req: Request, res: Response): Promise<any> => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ Status: 0, Msg: 'Email and OTP are required.' });
+  }
+
+  try {
+    const record = usernameOtpStore.get(email.trim());
+    if (!record) {
+      return res.status(400).json({ Status: 0, Msg: 'No OTP requested or OTP has expired.' });
+    }
+
+    if (Date.now() > record.expires) {
+      usernameOtpStore.delete(email.trim());
+      return res.status(400).json({ Status: 0, Msg: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ Status: 0, Msg: 'Incorrect OTP. Please check and try again.' });
+    }
+
+    // OTP verified! Clean up.
+    usernameOtpStore.delete(email.trim());
+
+    // Find all users with this email
+    const users = await prisma.user.findMany({
+      where: { email: email.trim() },
+      select: { username: true, firstname: true }
+    });
+
+    if (users.length === 0) {
+      return res.status(404).json({ Status: 0, Msg: 'No account registered with this email address.' });
+    }
+
+    const firstUser = users[0];
+    const usernameListHtml = users.map(u => `<li style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #1a56db;">${u.username}</li>`).join('');
+    const usernameListText = users.map(u => `- ${u.username}`).join('\n');
+
+    // Send usernames email
+    try {
+      const mailResult = await sendEmail({
+        to: email.trim(),
+        subject: 'Your Dainna Recovered Username(s)',
+        text: `Hello ${firstUser.firstname || 'User'},\n\nWe received a request to recover your username(s).\n\nYour registered username(s):\n${usernameListText}\n\nThank you!`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+            <h3 style="color: #1a56db; text-align: center;">Recovered Username(s)</h3>
+            <p>Hello ${firstUser.firstname || 'User'},</p>
+            <p>We received a request to recover your username(s) associated with this email address. Your registered username(s):</p>
+            <ul style="padding-left: 20px;">
+              ${usernameListHtml}
+            </ul>
+            <p>You can now use these username(s) to login to your account.</p>
+            <p style="font-size: 12px; color: #666; margin-top: 20px;">If you did not request this, please contact support.</p>
+          </div>
+        `
+      });
+
+      if (!mailResult || !mailResult.success) {
+        console.warn(`[Verify Username OTP] Email service failed to send usernames to ${email}. Fail result:`, mailResult);
+        return res.status(500).json({ Status: 0, Msg: 'Failed to send username recovery email. Please try again later.' });
+      }
+    } catch (err: any) {
+      console.error(`[Verify Username OTP] Email service threw exception when sending to ${email}:`, err);
+      return res.status(500).json({ Status: 0, Msg: 'Email service error occurred.' });
+    }
+
+    return res.json({ Status: 100, Msg: 'Verification successful. Your username(s) have been sent to your registered email.' });
+  } catch (error: any) {
+    console.error('Verify username OTP error:', error);
+    return res.status(500).json({ Status: 0, Msg: error.message || 'Internal Server Error' });
+  }
+});
+
 export default router;
