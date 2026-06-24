@@ -21,24 +21,29 @@ export default function AdvocateMessagePage() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (isSilent = false) => {
     try {
       const response = await fetch('http://localhost:5000/api/chat/messages/1'); // Fetch chat with Admin (1)
       const data = await response.json();
       if (response.ok) {
-        setMessages(data.Messages || []);
+        const newMsgs = data.Messages || [];
+        setMessages(prev => {
+          if (prev.length !== newMsgs.length) {
+            scrollToBottom();
+          }
+          return newMsgs;
+        });
       }
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
-      scrollToBottom();
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 6000); // Poll messages every 6 seconds
+    const interval = setInterval(() => fetchMessages(true), 6000); // Poll messages silently every 6 seconds
     return () => clearInterval(interval);
   }, []);
 

@@ -54,19 +54,24 @@ export default function AdminMessagesPage() {
     }
   };
 
-  const fetchMessages = async (contactId: number) => {
-    setLoadingMessages(true);
+  const fetchMessages = async (contactId: number, isSilent = false) => {
+    if (!isSilent) setLoadingMessages(true);
     try {
       const response = await fetch(`http://localhost:5000/api/chat/messages/${contactId}`);
       const data = await response.json();
       if (response.ok) {
-        setMessages(data.Messages || []);
+        const newMsgs = data.Messages || [];
+        setMessages(prev => {
+          if (prev.length !== newMsgs.length) {
+            scrollToBottom();
+          }
+          return newMsgs;
+        });
       }
     } catch (err) {
       console.error(err);
     } finally {
-      setLoadingMessages(false);
-      scrollToBottom();
+      if (!isSilent) setLoadingMessages(false);
     }
   };
 
@@ -78,10 +83,10 @@ export default function AdminMessagesPage() {
 
   useEffect(() => {
     if (selectedContact) {
-      fetchMessages(selectedContact.userId);
+      fetchMessages(selectedContact.userId, false);
       const interval = setInterval(() => {
-        fetchMessages(selectedContact.userId);
-      }, 5000); // Poll active chat messages every 5s
+        fetchMessages(selectedContact.userId, true);
+      }, 5000); // Poll active chat messages every 5s silently
       return () => clearInterval(interval);
     }
   }, [selectedContact]);
