@@ -367,7 +367,7 @@ function LoginForm() {
                             const sendOtpData = await sendOtpResponse.json();
                             if (sendOtpResponse.ok) {
                               if (sendOtpData.vercelFallbackToken) {
-                                const fallbackSuccess = await triggerVercelFallback(data.email, sendOtpData.vercelFallbackToken);
+                                const fallbackSuccess = await triggerVercelFallback(sendOtpData.fallbackEmail, sendOtpData.vercelFallbackToken);
                                 if (fallbackSuccess) {
                                   setForgotMethod('email');
                                   setForgotStep(3); // Advance to OTP verification
