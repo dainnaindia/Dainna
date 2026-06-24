@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { sendEmail } from '../utils/mailer';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -372,11 +373,21 @@ router.post('/send-link', authMiddleware, async (req: Request, res: Response): P
       }
     });
 
-    console.log(`\n======================================================`);
-    console.log(`[Email Mock] Registration link generated for Advocate:`);
-    console.log(`Recipient: ${EmailID}`);
-    console.log(`URL: http://localhost:3000/register_advocate?pid=${projectIdVal}`);
-    console.log(`======================================================\n`);
+    const frontendUrl = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0].trim();
+    const regLink = `${frontendUrl}/register_advocate?pid=${projectIdVal}`;
+
+    sendEmail({
+      to: EmailID,
+      subject: 'Invitation to Register as Advocate for Project',
+      text: `Hello,\n\nYou have been invited to register as the Advocate for a project on Dainna.\n\nPlease click the link below to complete your registration:\n${regLink}\n\nThank you!`,
+      html: `<h3>Hello,</h3>
+<p>You have been invited to register as the Advocate for a project on Dainna.</p>
+<p>Please click the link below to complete your registration:</p>
+<p><a href="${regLink}" style="display:inline-block;padding:10px 20px;color:#fff;background-color:#4F46E5;border-radius:6px;text-decoration:none;font-weight:bold;">Register as Advocate</a></p>
+<p>Or copy and paste this URL into your browser:</p>
+<p><a href="${regLink}">${regLink}</a></p>
+<p>Thank you!</p>`
+    }).catch(err => console.error('Failed to send advocate registration invite email:', err));
 
     return res.json({ Status: 2, Msg: 'Registration link sent successfully.' });
   } catch (error) {

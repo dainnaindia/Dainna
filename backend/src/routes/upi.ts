@@ -48,6 +48,40 @@ async function processSuccessfulPayment(invoiceId: number, utr: string, remarks:
     // 2. Calculate Advocate Split Cut (size * rate)
     const advCutAmount = Math.round((sizeVal * rateVal) * 100) / 100;
 
+    let realInvNo = invoice.inv_no;
+    let realInvoiceNo = invoice.invoice_no;
+
+    if (invoice.invoice_no && invoice.invoice_no.startsWith('TEMP')) {
+      // Get next real InvoiceNo (global max + 1)
+      const allInvoices = await tx.invoice_master.findMany({
+        where: {
+          NOT: {
+            invoice_no: { startsWith: 'TEMP' }
+          }
+        },
+        select: { invoice_no: true }
+      });
+      let invoiceNoVal = 1;
+      if (allInvoices.length > 0) {
+        const nos = allInvoices.map(i => parseInt(i.invoice_no || '0')).filter(n => !isNaN(n));
+        if (nos.length > 0) {
+          invoiceNoVal = Math.max(...nos) + 1;
+        }
+      }
+
+      let stateCode = '00';
+      if (invoice.state_id) {
+        const stateObj = await tx.state_master.findUnique({
+          where: { state_id: invoice.state_id }
+        });
+        if (stateObj && stateObj.state_code) {
+          stateCode = stateObj.state_code;
+        }
+      }
+      realInvNo = `${stateCode}/${String(invoiceNoVal).padStart(4, '0')}`;
+      realInvoiceNo = String(invoiceNoVal);
+    }
+
     // 5. Update invoice_master (Set Agent Payment Success, but NOT Advocate Payout details yet)
     const updatedInvoice = await tx.invoice_master.update({
       where: { invoice_id: invoiceId },
@@ -57,7 +91,9 @@ async function processSuccessfulPayment(invoiceId: number, utr: string, remarks:
         transaction_remarks: remarks || 'Paid via UPI Gateway',
         adv_amount: advCutAmount,
         agent_payment_received_by: 1,
-        agent_payment_received_date: new Date()
+        agent_payment_received_date: new Date(),
+        inv_no: realInvNo,
+        invoice_no: realInvoiceNo
       }
     });
 

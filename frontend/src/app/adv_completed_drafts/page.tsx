@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
-import { FileSpreadsheet, Printer, Search, Loader2, AlertCircle, Eye } from 'lucide-react';
+import { FileSpreadsheet, Printer, Search, Loader2, AlertCircle, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import TableToolbar, { TableFooter, ColumnOption } from '@/components/TableToolbar';
 
 interface Draft {
@@ -56,6 +56,29 @@ export default function AdvCompletedDraftsPage() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(-1);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (columnKey: string) => {
+    if (sortColumn === columnKey) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(columnKey);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (columnKey: string) => {
+    if (sortColumn !== columnKey) {
+      return <ArrowUpDown size={12} className="text-slate-500 opacity-60 hover:opacity-100 shrink-0" />;
+    }
+    if (sortOrder === 'asc') {
+      return <ArrowUp size={12} className="text-blue-400 font-bold shrink-0" />;
+    }
+    return <ArrowDown size={12} className="text-blue-400 font-bold shrink-0" />;
+  };
 
   useEffect(() => {
     setVisibleColumns(colOptions.map(c => c.key));
@@ -147,11 +170,78 @@ export default function AdvCompletedDraftsPage() {
     return { size: totalSize, amount: totalAmount };
   }, [filteredDrafts]);
 
+  const sortedDrafts = useMemo(() => {
+    if (!sortColumn) return filteredDrafts;
+
+    return [...filteredDrafts].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+
+      const aInvoice = a.invoice_master?.[0];
+      const bInvoice = b.invoice_master?.[0];
+
+      if (sortColumn === 'invNo') {
+        aVal = aInvoice?.inv_no || '';
+        bVal = bInvoice?.inv_no || '';
+      } else if (sortColumn === 'addeddate') {
+        aVal = aInvoice?.addeddate ? new Date(aInvoice.addeddate).getTime() : 0;
+        bVal = bInvoice?.addeddate ? new Date(bInvoice.addeddate).getTime() : 0;
+      } else if (sortColumn === 'addedtime') {
+        aVal = aInvoice?.addeddate ? new Date(aInvoice.addeddate).getTime() % (24 * 60 * 60 * 1000) : 0;
+        bVal = bInvoice?.addeddate ? new Date(bInvoice.addeddate).getTime() % (24 * 60 * 60 * 1000) : 0;
+      } else if (sortColumn === 'size') {
+        aVal = parseFloat(aInvoice?.size || '0');
+        bVal = parseFloat(bInvoice?.size || '0');
+      } else if (sortColumn === 'transactionId') {
+        aVal = aInvoice?.adv_payment_master?.transaction_id || '';
+        bVal = bInvoice?.adv_payment_master?.transaction_id || '';
+      } else if (sortColumn === 'amount') {
+        const aSize = parseFloat(aInvoice?.size || '0');
+        const aRate = parseFloat(aInvoice?.rate || '0');
+        aVal = (aSize * aRate) * 1.05;
+
+        const bSize = parseFloat(bInvoice?.size || '0');
+        const bRate = parseFloat(bInvoice?.rate || '0');
+        bVal = (bSize * bRate) * 1.05;
+      } else if (sortColumn === 'agentName') {
+        aVal = [
+          a.user_master_olb_master_addedbyTouser_master?.firstname,
+          a.user_master_olb_master_addedbyTouser_master?.middlename,
+          a.user_master_olb_master_addedbyTouser_master?.surname
+        ].filter(Boolean).join(' ');
+        bVal = [
+          b.user_master_olb_master_addedbyTouser_master?.firstname,
+          b.user_master_olb_master_addedbyTouser_master?.middlename,
+          b.user_master_olb_master_addedbyTouser_master?.surname
+        ].filter(Boolean).join(' ');
+      } else if (sortColumn === 'purchaserName') {
+        aVal = `${a.purchaserFirstName || ''} ${a.purchaserLastName || ''}`.trim();
+        bVal = `${b.purchaserFirstName || ''} ${b.purchaserLastName || ''}`.trim();
+      } else if (sortColumn === 'preparedDate') {
+        aVal = a.preparedDate ? new Date(a.preparedDate).getTime() : 0;
+        bVal = b.preparedDate ? new Date(b.preparedDate).getTime() : 0;
+      } else if (sortColumn === 'sentDate') {
+        aVal = a.sentDate ? new Date(a.sentDate).getTime() : 0;
+        bVal = b.sentDate ? new Date(b.sentDate).getTime() : 0;
+      } else if (sortColumn === 'acceptDate') {
+        aVal = a.acceptDate ? new Date(a.acceptDate).getTime() : 0;
+        bVal = b.acceptDate ? new Date(b.acceptDate).getTime() : 0;
+      } else if (sortColumn === 'status') {
+        aVal = 'Complete Draft';
+        bVal = 'Complete Draft';
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredDrafts, sortColumn, sortOrder]);
+
   const paginatedDrafts = useMemo(() => {
-    if (pageSize === -1) return filteredDrafts;
+    if (pageSize === -1) return sortedDrafts;
     const start = (currentPage - 1) * pageSize;
-    return filteredDrafts.slice(start, start + pageSize);
-  }, [filteredDrafts, currentPage, pageSize]);
+    return sortedDrafts.slice(start, start + pageSize);
+  }, [sortedDrafts, currentPage, pageSize]);
 
   const handleCopyData = () => {
     const headers = [
@@ -350,18 +440,102 @@ export default function AdvCompletedDraftsPage() {
                   <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
                     <tr>
                       <th className="py-4 px-3 text-center w-[50px]">#</th>
-                      {isColVisible('invNo') && <th className="py-4 px-3 w-[120px]">Draft No</th>}
-                      {isColVisible('addeddate') && <th className="py-4 px-3 w-[100px]">Date</th>}
-                      {isColVisible('addedtime') && <th className="py-4 px-3 w-[80px]">Time</th>}
-                      {isColVisible('size') && <th className="py-4 px-3 w-[80px]">Size</th>}
-                      {isColVisible('transactionId') && <th className="py-4 px-3 w-[140px]">Transaction No</th>}
-                      {isColVisible('amount') && <th className="py-4 px-3 w-[100px]">Amount</th>}
-                      {isColVisible('agentName') && <th className="py-4 px-3 w-[150px]">Agent Name</th>}
-                      {isColVisible('purchaserName') && <th className="py-4 px-3 w-[150px]">Purchaser Name</th>}
-                      {isColVisible('preparedDate') && <th className="py-4 px-3 w-[110px]">Prepared Date</th>}
-                      {isColVisible('sentDate') && <th className="py-4 px-3 w-[110px]">Sent Date</th>}
-                      {isColVisible('acceptDate') && <th className="py-4 px-3 w-[110px]">Accept Date</th>}
-                      {isColVisible('status') && <th className="py-4 px-3 w-[120px]">Status</th>}
+                      {isColVisible('invNo') && (
+                        <th className="py-4 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('invNo')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Draft No</span>
+                            {getSortIcon('invNo')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('addeddate') && (
+                        <th className="py-4 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('addeddate')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Date</span>
+                            {getSortIcon('addeddate')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('addedtime') && (
+                        <th className="py-4 px-3 w-[80px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('addedtime')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Time</span>
+                            {getSortIcon('addedtime')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('size') && (
+                        <th className="py-4 px-3 w-[80px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('size')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Size</span>
+                            {getSortIcon('size')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('transactionId') && (
+                        <th className="py-4 px-3 w-[140px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionId')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Transaction No</span>
+                            {getSortIcon('transactionId')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('amount') && (
+                        <th className="py-4 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('amount')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Amount</span>
+                            {getSortIcon('amount')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('agentName') && (
+                        <th className="py-4 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('agentName')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Agent Name</span>
+                            {getSortIcon('agentName')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('purchaserName') && (
+                        <th className="py-4 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('purchaserName')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Purchaser Name</span>
+                            {getSortIcon('purchaserName')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('preparedDate') && (
+                        <th className="py-4 px-3 w-[110px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('preparedDate')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Prepared Date</span>
+                            {getSortIcon('preparedDate')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('sentDate') && (
+                        <th className="py-4 px-3 w-[110px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('sentDate')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Sent Date</span>
+                            {getSortIcon('sentDate')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('acceptDate') && (
+                        <th className="py-4 px-3 w-[110px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('acceptDate')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Accept Date</span>
+                            {getSortIcon('acceptDate')}
+                          </div>
+                        </th>
+                      )}
+                      {isColVisible('status') && (
+                        <th className="py-4 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('status')}>
+                          <div className="flex items-center gap-1.5">
+                            <span>Status</span>
+                            {getSortIcon('status')}
+                          </div>
+                        </th>
+                      )}
                       <th className="py-4 px-3 text-center print:hidden w-[60px]">#</th>
                     </tr>
                   </thead>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -76,7 +76,8 @@ const adminCategories: SidebarCategory[] = [
     icon: <FileText size={16} />, 
     subLinks: [
       { label: 'All Drafts', href: '/view_all_drafts' },
-      { label: 'Completed Drafts', href: '/view_all_completed_drafts' }
+      { label: 'Completed Drafts', href: '/view_all_completed_drafts' },
+      { label: 'Advocate Draft Status', href: '/advocate_draft_status' }
     ]
   },
   { 
@@ -131,6 +132,7 @@ const agentCategories: SidebarCategory[] = [
   { label: 'Removed Transaction', href: '/agent_removed_transaction', icon: <Trash2 size={16} /> },
   { label: 'Invoice', href: '/view_all_invoice2', icon: <Receipt size={16} /> },
   { label: 'Completed Draft', href: '/view_all_agent_completed_draft', icon: <FileCheck size={16} /> },
+  { label: 'Advocate Draft Status', href: '/advocate_draft_status', icon: <History size={16} /> },
   { label: 'Rate List', href: '/agent_rate_list', icon: <Tag size={16} /> },
   { label: 'Similar Property', href: '/agent_similar_property', icon: <Layers size={16} /> },
   { label: 'Transaction History', href: '/agent_trans_history', icon: <History size={16} /> },
@@ -144,6 +146,7 @@ const advocateCategories: SidebarCategory[] = [
   { label: 'Success Transaction', href: '/adv_success_transaction', icon: <CheckCircle2 size={16} /> },
   { label: 'Failed Transaction', href: '/adv_failed_transaction', icon: <XCircle size={16} /> },
   { label: 'Completed Drafts', href: '/adv_completed_drafts', icon: <FileCheck size={16} /> },
+  { label: 'Advocate Draft Status', href: '/advocate_draft_status', icon: <History size={16} /> },
   { label: 'Bank Detail', href: '/adv_bank_detail', icon: <Landmark size={16} /> },
   { label: 'Transaction History', href: '/adv_trans_history', icon: <History size={16} /> },
   { label: 'Agent Work Report', href: '/adv_agent_work_report', icon: <BarChart3 size={16} /> },
@@ -196,18 +199,68 @@ export default function DashboardLayout({ children, role }: { children: React.Re
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [sessionLoading, setSessionLoading] = useState(true);
 
-  const fetchSession = async () => {
+  const fetchSession = useCallback(async () => {
     try {
       const res = await fetch('http://localhost:5000/api/auth/session', { credentials: 'include' });
+      if (res.status === 401) {
+        router.push('/login');
+        return;
+      }
+      
       const data = await res.json();
       if (res.ok && data.Status === 100) {
-        setCurrentUser(data.User);
+        const user = data.User;
+        setCurrentUser(user);
+        
+        // Mismatch check
+        const userTypeId = user.userTypeId;
+        const SHARED_PATHS = ['/profile', '/pay_agent', '/pay_advocate', '/advocate_draft_status'];
+        const isSharedPath = SHARED_PATHS.includes(pathname);
+        
+        if (!isSharedPath) {
+          if (role === 'agent' && userTypeId !== 3) {
+            if (userTypeId === 4) {
+              router.push('/adv_dashboard');
+            } else if (userTypeId === 1 || userTypeId === 2) {
+              router.push('/dashboard');
+            } else {
+              router.push('/login');
+            }
+            return;
+          }
+          if (role === 'advocate' && userTypeId !== 4) {
+            if (userTypeId === 3) {
+              router.push('/agent_dashboard');
+            } else if (userTypeId === 1 || userTypeId === 2) {
+              router.push('/dashboard');
+            } else {
+              router.push('/login');
+            }
+            return;
+          }
+          if (role === 'admin' && userTypeId !== 1 && userTypeId !== 2) {
+            if (userTypeId === 3) {
+              router.push('/agent_dashboard');
+            } else if (userTypeId === 4) {
+              router.push('/adv_dashboard');
+            } else {
+              router.push('/login');
+            }
+            return;
+          }
+        }
+        
+        setSessionLoading(false);
+      } else {
+        router.push('/login');
       }
     } catch (err) {
       console.error('Session fetch failed', err);
+      setSessionLoading(false);
     }
-  };
+  }, [role, pathname, router]);
 
   // Notifications and counts states
   const [counts, setCounts] = useState({
@@ -387,7 +440,21 @@ export default function DashboardLayout({ children, role }: { children: React.Re
     fetchSession();
     const interval = setInterval(fetchCounts, 15000); // Poll every 15 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchSession]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchSession();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [fetchSession]);
 
   const toggleCollapse = () => {
     const newState = !isCollapsed;
@@ -454,6 +521,17 @@ export default function DashboardLayout({ children, role }: { children: React.Re
       setExpandedCategory(cat.label);
     }
   };
+
+  if (sessionLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-red-500" size={36} />
+          <span className="text-sm font-semibold tracking-wider text-slate-400">Verifying session...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">

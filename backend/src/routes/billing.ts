@@ -260,18 +260,6 @@ router.post('/invoices/add', authMiddleware, async (req: Request, res: Response)
     const advocateIdVal = parseInt(AdvocateID);
     const stateIdVal = StateID ? parseInt(StateID) : null;
 
-    // Get next InvoiceNo (global max + 1)
-    const allInvoices = await prisma.invoice_master.findMany({
-      select: { invoice_no: true }
-    });
-    let invoiceNoVal = 1;
-    if (allInvoices.length > 0) {
-      const nos = allInvoices.map(i => parseInt(i.invoice_no || '0')).filter(n => !isNaN(n));
-      if (nos.length > 0) {
-        invoiceNoVal = Math.max(...nos) + 1;
-      }
-    }
-
     // Get next CustomerID (project max + 1)
     const projectInvoices = await prisma.invoice_master.findMany({
       where: { project_id: projectIdVal },
@@ -284,19 +272,6 @@ router.post('/invoices/add', authMiddleware, async (req: Request, res: Response)
         customerIdVal = Math.max(...ids) + 1;
       }
     }
-
-    // Get State Code
-    let stateCode = '00';
-    if (stateIdVal) {
-      const state = await prisma.state_master.findUnique({
-        where: { state_id: stateIdVal }
-      });
-      if (state && state.state_code) {
-        stateCode = state.state_code;
-      }
-    }
-
-    const invNo = `${stateCode}/${String(invoiceNoVal).padStart(4, '0')}`;
 
     // Calculate math
     const sizeVal = parseFloat(Size) || 0;
@@ -313,15 +288,15 @@ router.post('/invoices/add', authMiddleware, async (req: Request, res: Response)
     const handlingChargesAmountVal = Math.round((tempRateVal * sizeVal) * 100) / 100;
     const grandTotalVal = Math.round((totalVal + cgstAmountVal + sgstAmountVal) * 100) / 100;
 
-    const invoice = await prisma.invoice_master.create({
+    let invoice = await prisma.invoice_master.create({
       data: {
         olb_id: olbIdVal,
         project_id: projectIdVal,
         advocate_id: advocateIdVal,
         customer_id: String(customerIdVal),
         state_id: stateIdVal,
-        inv_no: invNo,
-        invoice_no: String(invoiceNoVal),
+        inv_no: 'TEMP',
+        invoice_no: 'TEMP',
         invoice_date: new Date(),
         size_width: sizeWidthVal,
         size_height: sizeHeightVal,
@@ -339,6 +314,17 @@ router.post('/invoices/add', authMiddleware, async (req: Request, res: Response)
         payment_status: 0,
         addedby: user.userId,
         addeddate: new Date()
+      }
+    });
+
+    const tempInvNo = `TEMP/${String(invoice.invoice_id).padStart(4, '0')}`;
+    const tempInvoiceNo = `TEMP-${invoice.invoice_id}`;
+
+    invoice = await prisma.invoice_master.update({
+      where: { invoice_id: invoice.invoice_id },
+      data: {
+        inv_no: tempInvNo,
+        invoice_no: tempInvoiceNo
       }
     });
 
@@ -811,16 +797,66 @@ router.post('/invoices/update-payment-status', authMiddleware, async (req: Reque
     const statusVal = parseInt(Status); // 1 = Success, 2 = Failed
     const sentDate = new Date();
 
-    // Update invoice payment status
-    await prisma.invoice_master.update({
-      where: { invoice_id: invoiceIdVal },
-      data: {
-        payment_status: statusVal,
-        payment_remarks: Remarks || '',
-        agent_payment_received_by: user.userId,
-        agent_payment_received_date: sentDate
+    // Update invoice payment status (and assign real sequence numbers if successful and currently temporary)
+    if (statusVal === 1) {
+      const invoiceObj = await prisma.invoice_master.findUnique({
+        where: { invoice_id: invoiceIdVal }
+      });
+      let realInvNo = invoiceObj?.inv_no;
+      let realInvoiceNo = invoiceObj?.invoice_no;
+
+      if (invoiceObj && invoiceObj.invoice_no && invoiceObj.invoice_no.startsWith('TEMP')) {
+        const allInvoices = await prisma.invoice_master.findMany({
+          where: {
+            NOT: {
+              invoice_no: { startsWith: 'TEMP' }
+            }
+          },
+          select: { invoice_no: true }
+        });
+        let invoiceNoVal = 1;
+        if (allInvoices.length > 0) {
+          const nos = allInvoices.map(i => parseInt(i.invoice_no || '0')).filter(n => !isNaN(n));
+          if (nos.length > 0) {
+            invoiceNoVal = Math.max(...nos) + 1;
+          }
+        }
+
+        let stateCode = '00';
+        if (invoiceObj.state_id) {
+          const stateObj = await prisma.state_master.findUnique({
+            where: { state_id: invoiceObj.state_id }
+          });
+          if (stateObj && stateObj.state_code) {
+            stateCode = stateObj.state_code;
+          }
+        }
+        realInvNo = `${stateCode}/${String(invoiceNoVal).padStart(4, '0')}`;
+        realInvoiceNo = String(invoiceNoVal);
       }
-    });
+
+      await prisma.invoice_master.update({
+        where: { invoice_id: invoiceIdVal },
+        data: {
+          payment_status: statusVal,
+          payment_remarks: Remarks || '',
+          agent_payment_received_by: user.userId,
+          agent_payment_received_date: sentDate,
+          inv_no: realInvNo,
+          invoice_no: realInvoiceNo
+        }
+      });
+    } else {
+      await prisma.invoice_master.update({
+        where: { invoice_id: invoiceIdVal },
+        data: {
+          payment_status: statusVal,
+          payment_remarks: Remarks || '',
+          agent_payment_received_by: user.userId,
+          agent_payment_received_date: sentDate
+        }
+      });
+    }
 
     if (statusVal === 1) {
       // Transition Draft status to 3 (Sent to Advocate) if currently at 2 (Waiting for Advocate)

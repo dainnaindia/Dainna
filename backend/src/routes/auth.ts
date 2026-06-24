@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { sendEmail } from '../utils/mailer';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -223,12 +224,23 @@ router.post('/send-verification-email', async (req: Request, res: Response): Pro
       },
     });
 
-    console.log(`\n======================================================`);
-    console.log(`Verification link generated for Agent [${user.username}]:`);
-    console.log(`http://localhost:3000/login?verify=${verificationToken}`);
-    console.log(`======================================================\n`);
+    const frontendUrl = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0].trim();
+    const verifyLink = `${frontendUrl}/login?verify=${verificationToken}`;
 
-    return res.json({ Status: 100, Msg: 'Verification email sent (logged to server console).' });
+    // Send email verification link
+    sendEmail({
+      to: user.email || '',
+      subject: 'Verify Your Dainna Agent Account',
+      text: `Hello ${user.firstname},\n\nPlease verify your email address by clicking the link below:\n${verifyLink}\n\nThank you!`,
+      html: `<h3>Hello ${user.firstname},</h3>
+<p>Please click the link below to verify your email address and activate your agent account:</p>
+<p><a href="${verifyLink}" style="display:inline-block;padding:10px 20px;color:#fff;background-color:#4F46E5;border-radius:6px;text-decoration:none;font-weight:bold;">Verify Account</a></p>
+<p>Or copy and paste this URL into your browser:</p>
+<p><a href="${verifyLink}">${verifyLink}</a></p>
+<p>Thank you!</p>`
+    }).catch(err => console.error('Failed to send verification email inside auth:', err));
+
+    return res.json({ Status: 100, Msg: 'Verification email sent.' });
   } catch (error) {
     console.error('Send verification email error:', error);
     return res.status(500).json({ Status: 0, Msg: 'Internal Server Error' });

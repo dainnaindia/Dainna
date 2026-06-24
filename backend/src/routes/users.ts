@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { sendEmail } from '../utils/mailer';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -355,10 +356,19 @@ router.post('/public/register', async (req: Request, res: Response): Promise<any
     });
 
     if (userTypeIDVal === 3 && verifyToken) {
-      console.log(`\n======================================================`);
-      console.log(`Verification link generated for Agent Registration [${Username}]:`);
-      console.log(`http://localhost:3000/login?verify=${verifyToken}`);
-      console.log(`======================================================\n`);
+      const frontendUrl = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',')[0].trim();
+      const verifyLink = `${frontendUrl}/login?verify=${verifyToken}`;
+      sendEmail({
+        to: Email || '',
+        subject: 'Verify Your Dainna Agent Account',
+        text: `Welcome to Dainna!\n\nPlease verify your email address by clicking the link below:\n${verifyLink}\n\nThank you!`,
+        html: `<h3>Welcome to Dainna!</h3>
+<p>Please click the link below to verify your email address and activate your agent account:</p>
+<p><a href="${verifyLink}" style="display:inline-block;padding:10px 20px;color:#fff;background-color:#4F46E5;border-radius:6px;text-decoration:none;font-weight:bold;">Verify Account</a></p>
+<p>Or copy and paste this URL into your browser:</p>
+<p><a href="${verifyLink}">${verifyLink}</a></p>
+<p>Thank you!</p>`
+      }).catch(err => console.error('Failed to send verification email inside register:', err));
     }
 
     // Link advocate user to the project
@@ -421,8 +431,17 @@ router.post('/forgot-pin', authMiddleware, async (req: Request, res: Response): 
     if (!user || !user.email || user.email.trim().toLowerCase() !== (EmailID || '').trim().toLowerCase()) {
       return res.json({ Status: 0, Msg: 'Please Enter Registered Email ID.' });
     }
-    // Log PIN to server console for testing/development
-    console.log(`[ForgotPIN Request] Advocate user ${user.username} (ID: ${user.userId}) recovered PIN: ${user.securePin}`);
+    // Send email with the secure pin
+    sendEmail({
+      to: user.email,
+      subject: 'Dainna Secure PIN Recovery',
+      text: `Hello ${user.firstname},\n\nWe received a request to recover your Secure PIN. Below is your PIN:\n\nSecure PIN: ${user.securePin}\n\nIf you did not request this, please secure your account.\n\nThank you!`,
+      html: `<h3>Hello ${user.firstname},</h3>
+<p>We received a request to recover your Secure PIN. Below is your PIN:</p>
+<p><strong>Secure PIN: <span style="font-size: 18px; color: #4F46E5;">${user.securePin}</span></strong></p>
+<p>If you did not request this, please secure your account immediately.</p>
+<p>Thank you!</p>`
+    }).catch(err => console.error('Failed to send PIN recovery email:', err));
     return res.json({ Status: 2, Msg: 'Check Your Email For Secure Pin.' });
   } catch (error) {
     console.error('Forgot PIN error:', error);

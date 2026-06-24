@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileSpreadsheet, Search, Loader2, AlertCircle, Printer, Eye, X, Check, AlertTriangle, Download } from 'lucide-react';
+import { FileSpreadsheet, Search, Loader2, AlertCircle, Printer, Eye, X, Check, AlertTriangle, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import TableToolbar, { TableFooter, ColumnOption } from '@/components/TableToolbar';
 
 interface InvoiceDetail {
@@ -175,6 +175,29 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
   const [currentPage, setCurrentPage] = useState(1);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const [acceptingOlbId, setAcceptingOlbId] = useState<number | null>(null);
+
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (columnKey: string) => {
+    if (sortColumn === columnKey) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(columnKey);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (columnKey: string) => {
+    if (sortColumn !== columnKey) {
+      return <ArrowUpDown size={12} className="text-slate-500 opacity-60 hover:opacity-100 shrink-0" />;
+    }
+    if (sortOrder === 'asc') {
+      return <ArrowUp size={12} className="text-blue-400 font-bold shrink-0" />;
+    }
+    return <ArrowDown size={12} className="text-blue-400 font-bold shrink-0" />;
+  };
 
   const downloadWordDraft = async (activeDraft: DraftDetails) => {
     if (!activeDraft) return;
@@ -402,24 +425,26 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
   }, [localSearchQuery, pageSize]);
 
   useEffect(() => {
-    // Set initial date range (first day of current month to today)
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const formatDateStr = (date: Date) => {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    };
-    setStartDate(formatDateStr(firstDay));
-    setEndDate(formatDateStr(now));
+    if (role !== 'advocate') {
+      // Set initial date range (first day of current month to today) for admin
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const formatDateStr = (date: Date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+      setStartDate(formatDateStr(firstDay));
+      setEndDate(formatDateStr(now));
+    }
 
     // Fetch filter states
     fetch('http://localhost:5000/api/users/states')
       .then(res => res.json())
       .then(data => setStates(data.States || []))
       .catch(err => console.error('Error fetching states:', err));
-  }, []);
+  }, [role]);
 
   // Fetch payments when localStatus, state, city, project or statusFilter change
   useEffect(() => {
@@ -587,6 +612,7 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
 
       if (localSearchQuery.trim()) {
         const q = localSearchQuery.toLowerCase();
+        const invoicesStr = p.invoices?.map(i => i.invNo || '').join(' ').toLowerCase() || '';
         const matchesSearch = 
           (p.transactionId || '').toLowerCase().includes(q) ||
           (p.paymentMethod || '').toLowerCase().includes(q) ||
@@ -595,18 +621,73 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
           (p.agentName || '').toLowerCase().includes(q) ||
           (p.projectName || '').toLowerCase().includes(q) ||
           (p.projectCity || '').toLowerCase().includes(q) ||
-          (p.projectState || '').toLowerCase().includes(q);
+          (p.projectState || '').toLowerCase().includes(q) ||
+          invoicesStr.includes(q);
         if (!matchesSearch) return false;
       }
       return true;
     });
   }, [payments, startDate, endDate, localSearchQuery]);
 
+  const sortedPayments = useMemo(() => {
+    if (!sortColumn) return filteredPayments;
+
+    return [...filteredPayments].sort((a, b) => {
+      let aVal: any = '';
+      let bVal: any = '';
+
+      if (sortColumn === 'invoiceNo') {
+        aVal = a.invoices?.map(i => i.invNo || '').join(', ') || '';
+        bVal = b.invoices?.map(i => i.invNo || '').join(', ') || '';
+      } else if (sortColumn === 'transactionId') {
+        aVal = a.transactionId || '';
+        bVal = b.transactionId || '';
+      } else if (sortColumn === 'transactionDate') {
+        aVal = a.transactionDate ? new Date(a.transactionDate).getTime() : 0;
+        bVal = b.transactionDate ? new Date(b.transactionDate).getTime() : 0;
+      } else if (sortColumn === 'paymentMethod') {
+        aVal = a.paymentMethod || '';
+        bVal = b.paymentMethod || '';
+      } else if (sortColumn === 'amount') {
+        aVal = a.amount || 0;
+        bVal = b.amount || 0;
+      } else if (sortColumn === 'noOfDrafts') {
+        aVal = a.invoices?.length || 0;
+        bVal = b.invoices?.length || 0;
+      } else if (sortColumn === 'remarks') {
+        aVal = a.remarks || '';
+        bVal = b.remarks || '';
+      } else if (sortColumn === 'paymentStatus') {
+        aVal = a.paymentStatus || 0;
+        bVal = b.paymentStatus || 0;
+      } else if (sortColumn === 'advocateName') {
+        aVal = a.advocateName || '';
+        bVal = b.advocateName || '';
+      } else if (sortColumn === 'agentName') {
+        aVal = a.agentName || '';
+        bVal = b.agentName || '';
+      } else if (sortColumn === 'projectState') {
+        aVal = a.projectState || '';
+        bVal = b.projectState || '';
+      } else if (sortColumn === 'projectCity') {
+        aVal = a.projectCity || '';
+        bVal = b.projectCity || '';
+      } else if (sortColumn === 'projectName') {
+        aVal = a.projectName || '';
+        bVal = b.projectName || '';
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredPayments, sortColumn, sortOrder]);
+
   const paginatedPayments = useMemo(() => {
-    if (pageSize === -1) return filteredPayments;
+    if (pageSize === -1) return sortedPayments;
     const start = (currentPage - 1) * pageSize;
-    return filteredPayments.slice(start, start + pageSize);
-  }, [filteredPayments, currentPage, pageSize]);
+    return sortedPayments.slice(start, start + pageSize);
+  }, [sortedPayments, currentPage, pageSize]);
 
   const totalAmount = useMemo(() => {
     return filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -748,7 +829,8 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
         )}
 
         {/* Filter Date/Cascades Block */}
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl shadow-md print:hidden">
+        {role !== 'advocate' && (
+          <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl shadow-md print:hidden">
           <form onSubmit={handleSearchSubmit} className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-${statusFilter === undefined ? '7' : '6'} gap-4 items-end`}>
             {statusFilter === undefined && (
               <div className="w-full">
@@ -838,6 +920,7 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
             </div>
           </form>
         </div>
+        )}
 
         {/* DataTables Operational Toolbar */}
         <TableToolbar
@@ -877,43 +960,218 @@ export default function AdvocatePayoutsList({ role, statusFilter, title, subtitl
                       statusFilter !== undefined ? (
                         <tr>
                           <th className="py-3 px-3 text-center w-[50px]">#</th>
-                          {isColVisible('invoiceNo') && <th className="py-3 px-3 w-[150px]">Draft No</th>}
-                          {isColVisible('transactionId') && <th className="py-3 px-3 w-[180px]">Transaction ID</th>}
-                          {isColVisible('transactionDate') && <th className="py-3 px-3 w-[120px]">Date</th>}
-                          {isColVisible('paymentMethod') && <th className="py-3 px-3 w-[120px]">Method</th>}
-                          {isColVisible('amount') && <th className="py-3 px-3 text-right w-[110px]">Amount</th>}
-                          {isColVisible('noOfDrafts') && <th className="py-3 px-3 text-center w-[100px]">Drafts</th>}
-                          {isColVisible('remarks') && <th className="py-3 px-3 w-[180px]">Remarks</th>}
+                          {isColVisible('invoiceNo') && (
+                            <th className="py-3 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('invoiceNo')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Draft No</span>
+                                {getSortIcon('invoiceNo')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('transactionId') && (
+                            <th className="py-3 px-3 w-[180px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionId')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Transaction ID</span>
+                                {getSortIcon('transactionId')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('transactionDate') && (
+                            <th className="py-3 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionDate')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Date</span>
+                                {getSortIcon('transactionDate')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('paymentMethod') && (
+                            <th className="py-3 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('paymentMethod')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Method</span>
+                                {getSortIcon('paymentMethod')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('amount') && (
+                            <th className="py-3 px-3 w-[110px] cursor-pointer hover:bg-slate-800 select-none text-right" onClick={() => handleSort('amount')}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <span>Amount</span>
+                                {getSortIcon('amount')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('noOfDrafts') && (
+                            <th className="py-3 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none text-center" onClick={() => handleSort('noOfDrafts')}>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span>Drafts</span>
+                                {getSortIcon('noOfDrafts')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('remarks') && (
+                            <th className="py-3 px-3 w-[180px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('remarks')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Remarks</span>
+                                {getSortIcon('remarks')}
+                              </div>
+                            </th>
+                          )}
                           {statusFilter === 1 && <th className="py-3 px-3 text-center w-[110px] print:hidden">#</th>}
                           <th className="py-3 px-3 text-center w-[60px] print:hidden">#</th>
                         </tr>
                       ) : (
                         <tr>
                           <th className="py-3 px-3 text-center w-[50px]">#</th>
-                          {isColVisible('invoiceNo') && <th className="py-3 px-3 w-[150px]">Draft No</th>}
-                          {isColVisible('transactionId') && <th className="py-3 px-3 w-[180px]">Transaction ID</th>}
-                          {isColVisible('transactionDate') && <th className="py-3 px-3 w-[120px]">Date</th>}
-                          {isColVisible('paymentMethod') && <th className="py-3 px-3 w-[120px]">Method</th>}
-                          {isColVisible('amount') && <th className="py-3 px-3 text-right w-[110px]">Amount</th>}
-                          {isColVisible('remarks') && <th className="py-3 px-3 w-[180px]">Remarks</th>}
-                          {isColVisible('paymentStatus') && <th className="py-3 px-3 w-[120px]">Status</th>}
+                          {isColVisible('invoiceNo') && (
+                            <th className="py-3 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('invoiceNo')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Draft No</span>
+                                {getSortIcon('invoiceNo')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('transactionId') && (
+                            <th className="py-3 px-3 w-[180px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionId')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Transaction ID</span>
+                                {getSortIcon('transactionId')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('transactionDate') && (
+                            <th className="py-3 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionDate')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Date</span>
+                                {getSortIcon('transactionDate')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('paymentMethod') && (
+                            <th className="py-3 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('paymentMethod')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Method</span>
+                                {getSortIcon('paymentMethod')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('amount') && (
+                            <th className="py-3 px-3 w-[110px] cursor-pointer hover:bg-slate-800 select-none text-right" onClick={() => handleSort('amount')}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <span>Amount</span>
+                                {getSortIcon('amount')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('remarks') && (
+                            <th className="py-3 px-3 w-[180px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('remarks')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Remarks</span>
+                                {getSortIcon('remarks')}
+                              </div>
+                            </th>
+                          )}
+                          {isColVisible('paymentStatus') && (
+                            <th className="py-3 px-3 w-[120px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('paymentStatus')}>
+                              <div className="flex items-center gap-1.5">
+                                <span>Status</span>
+                                {getSortIcon('paymentStatus')}
+                              </div>
+                            </th>
+                          )}
                           <th className="py-3 px-3 text-center w-[60px] print:hidden">#</th>
                         </tr>
                       )
                     ) : (
                       <tr>
                         <th className="py-3 px-3 text-center w-[50px]">#</th>
-                        {isColVisible('invoiceNo') && <th className="py-3 px-3 w-[150px]">Draft No</th>}
-                        {isColVisible('transactionId') && <th className="py-3 px-3 w-[180px]">Transaction ID</th>}
-                        {isColVisible('transactionDate') && <th className="py-3 px-3 w-[110px]">Date</th>}
-                        {isColVisible('paymentMethod') && <th className="py-3 px-3 w-[100px]">Method</th>}
-                        {isColVisible('amount') && <th className="py-3 px-3 text-right w-[100px]">Amount</th>}
-                        {isColVisible('advocateName') && <th className="py-3 px-3 w-[150px]">Advocate</th>}
-                        {isColVisible('agentName') && <th className="py-3 px-3 w-[150px]">Agent</th>}
-                        {isColVisible('projectState') && <th className="py-3 px-3 w-[100px]">State</th>}
-                        {isColVisible('projectCity') && <th className="py-3 px-3 w-[100px]">City</th>}
-                        {isColVisible('projectName') && <th className="py-3 px-3 w-[150px]">Project</th>}
-                        {isColVisible('paymentStatus') && <th className="py-3 px-3 w-[100px]">Status</th>}
+                        {isColVisible('invoiceNo') && (
+                          <th className="py-3 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('invoiceNo')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Draft No</span>
+                              {getSortIcon('invoiceNo')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('transactionId') && (
+                          <th className="py-3 px-3 w-[180px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionId')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Transaction ID</span>
+                              {getSortIcon('transactionId')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('transactionDate') && (
+                          <th className="py-3 px-3 w-[110px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('transactionDate')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Date</span>
+                              {getSortIcon('transactionDate')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('paymentMethod') && (
+                          <th className="py-3 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('paymentMethod')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Method</span>
+                              {getSortIcon('paymentMethod')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('amount') && (
+                          <th className="py-3 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none text-right" onClick={() => handleSort('amount')}>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span>Amount</span>
+                              {getSortIcon('amount')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('advocateName') && (
+                          <th className="py-3 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('advocateName')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Advocate</span>
+                              {getSortIcon('advocateName')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('agentName') && (
+                          <th className="py-3 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('agentName')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Agent</span>
+                              {getSortIcon('agentName')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('projectState') && (
+                          <th className="py-3 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('projectState')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>State</span>
+                              {getSortIcon('projectState')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('projectCity') && (
+                          <th className="py-3 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('projectCity')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>City</span>
+                              {getSortIcon('projectCity')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('projectName') && (
+                          <th className="py-3 px-3 w-[150px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('projectName')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Project</span>
+                              {getSortIcon('projectName')}
+                            </div>
+                          </th>
+                        )}
+                        {isColVisible('paymentStatus') && (
+                          <th className="py-3 px-3 w-[100px] cursor-pointer hover:bg-slate-800 select-none" onClick={() => handleSort('paymentStatus')}>
+                            <div className="flex items-center gap-1.5">
+                              <span>Status</span>
+                              {getSortIcon('paymentStatus')}
+                            </div>
+                          </th>
+                        )}
                         <th className="py-3 px-3 text-center w-[60px] print:hidden">#</th>
                       </tr>
                     )}

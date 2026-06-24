@@ -22,6 +22,60 @@ async function authMiddleware(req: Request, res: Response, next: any): Promise<a
   }
 }
 
+// GET /api/drafts/advocate-status
+router.get('/advocate-status', authMiddleware, async (req: Request, res: Response): Promise<any> => {
+  const user = req.body.currentUser;
+
+  try {
+    const whereClause: any = {
+      draftStatus: { in: [2, 3, 4, 5] }
+    };
+
+    // Filter by user role (Agents see their own, Advocates see assigned, Admins/Staff see all)
+    if (user.userTypeId === 3) {
+      whereClause.addedby = user.userId;
+    } else if (user.userTypeId === 4) {
+      whereClause.invoice_master = {
+        some: { advocate_id: user.userId }
+      };
+    }
+
+    const drafts = await prisma.olb.findMany({
+      where: whereClause,
+      include: {
+        state_master: true,
+        user_master_olb_master_addedbyTouser_master: {
+          select: {
+            userId: true,
+            firstname: true,
+            middlename: true,
+            surname: true
+          }
+        },
+        invoice_master: {
+          include: {
+            project_master: true,
+            user_master_invoice_master_advocate_idTouser_master: {
+              select: {
+                userId: true,
+                firstname: true,
+                middlename: true,
+                surname: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { modifieddate: 'desc' }
+    });
+
+    return res.json({ Status: 100, Drafts: drafts });
+  } catch (error) {
+    console.error('Fetch advocate drafts status error:', error);
+    return res.status(500).json({ Error: 'Internal Server Error' });
+  }
+});
+
 // GET /api/drafts/list
 router.get('/list', authMiddleware, async (req: Request, res: Response): Promise<any> => {
   const user = req.body.currentUser;
