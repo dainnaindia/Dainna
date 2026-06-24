@@ -12,6 +12,13 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const roleParam = searchParams.get('role') || 'agent'; // default to agent
 
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const [activeRole, setActiveRole] = useState(roleParam);
+
+  useEffect(() => {
+    setActiveRole(roleParam);
+  }, [roleParam]);
+
   // State management
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +69,7 @@ function LoginForm() {
     const verifyToken = searchParams.get('verify');
     if (verifyToken) {
       setVerifying(true);
-      fetch(`http://localhost:5000/api/auth/verify-email?token=${verifyToken}`)
+      fetch(`${apiBase}/api/auth/verify-email?token=${verifyToken}`)
         .then(res => res.json())
         .then(data => {
           if (data.Status === 100) {
@@ -85,8 +92,8 @@ function LoginForm() {
   }, [searchParams]);
 
   // Map role parameters to titles and values
-  const getRoleConfig = () => {
-    switch (roleParam.toLowerCase()) {
+  const getRoleConfig = (role: string) => {
+    switch (role.toLowerCase()) {
       case 'advocate':
       case 'adv':
         return { title: 'ADVOCATE LOGIN', typeId: 4, regPath: '/register_advocate' };
@@ -100,7 +107,7 @@ function LoginForm() {
     }
   };
 
-  const roleConfig = getRoleConfig();
+  const roleConfig = getRoleConfig(activeRole);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +115,7 @@ function LoginForm() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${apiBase}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ UserName: userName, Password: password }),
@@ -164,9 +171,12 @@ function LoginForm() {
           <div className="flex p-1 bg-slate-950/80 border border-slate-800/50 rounded-xl mb-6 flex-wrap gap-1 sm:flex-nowrap">
             <button
               type="button"
-              onClick={() => router.push('/login?role=agent')}
+              onClick={() => {
+                setActiveRole('agent');
+                router.push('/login?role=agent');
+              }}
               className={`flex-1 py-2.5 text-[10px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                roleParam.toLowerCase() === 'agent'
+                activeRole.toLowerCase() === 'agent'
                   ? 'bg-red-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -175,9 +185,12 @@ function LoginForm() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/login?role=advocate')}
+              onClick={() => {
+                setActiveRole('advocate');
+                router.push('/login?role=advocate');
+              }}
               className={`flex-1 py-2.5 text-[10px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                (roleParam.toLowerCase() === 'advocate' || roleParam.toLowerCase() === 'adv')
+                (activeRole.toLowerCase() === 'advocate' || activeRole.toLowerCase() === 'adv')
                   ? 'bg-red-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -186,9 +199,12 @@ function LoginForm() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/login?role=staff')}
+              onClick={() => {
+                setActiveRole('staff');
+                router.push('/login?role=staff');
+              }}
               className={`flex-1 py-2.5 text-[10px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                roleParam.toLowerCase() === 'staff'
+                activeRole.toLowerCase() === 'staff'
                   ? 'bg-red-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -197,9 +213,12 @@ function LoginForm() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/login?role=admin')}
+              onClick={() => {
+                setActiveRole('admin');
+                router.push('/login?role=admin');
+              }}
               className={`flex-1 py-2.5 text-[10px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                roleParam.toLowerCase() === 'admin'
+                activeRole.toLowerCase() === 'admin'
                   ? 'bg-red-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -266,7 +285,7 @@ function LoginForm() {
 
             {/* Links Block */}
             <div className="flex items-center justify-between text-[11px] text-red-400 font-bold tracking-wider pt-2">
-              {(roleParam.toLowerCase() === 'agent' || roleParam.toLowerCase() === 'advocate') ? (
+              {(activeRole.toLowerCase() === 'agent' || activeRole.toLowerCase() === 'advocate' || activeRole.toLowerCase() === 'adv') ? (
                 <Link href={roleConfig.regPath} className="hover:text-red-300 transition-colors">Register Here</Link>
               ) : (
                 <div />
@@ -342,7 +361,7 @@ function LoginForm() {
                     setForgotLoading(true);
                     setForgotError('');
                     try {
-                      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
+                      const response = await fetch(`${apiBase}/api/auth/forgot-password`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username: forgotUsername })
@@ -359,7 +378,7 @@ function LoginForm() {
                         } else {
                           // Try sending Email OTP immediately
                           try {
-                            const sendOtpResponse = await fetch('http://localhost:5000/api/auth/send-otp', {
+                            const sendOtpResponse = await fetch(`${apiBase}/api/auth/send-otp`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ username: forgotUsername, method: 'email' })
@@ -437,7 +456,7 @@ function LoginForm() {
                         setForgotLoading(true);
                         setForgotError('');
                         try {
-                          const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                          const response = await fetch(`${apiBase}/api/auth/send-otp`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ username: forgotUsername, method: 'sms' })
@@ -480,7 +499,7 @@ function LoginForm() {
                     setForgotLoading(true);
                     setForgotError('');
                     try {
-                      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+                      const response = await fetch(`${apiBase}/api/auth/verify-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username: forgotUsername, otp: forgotOtp })
@@ -495,7 +514,7 @@ function LoginForm() {
                           } else {
                             // If Vercel fallback fails, request SMS reset link from Render backend
                             try {
-                              const smsFallbackRes = await fetch('http://localhost:5000/api/auth/send-reset-link-sms', {
+                              const smsFallbackRes = await fetch(`${apiBase}/api/auth/send-reset-link-sms`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ username: forgotUsername, token: data.token })
@@ -550,7 +569,7 @@ function LoginForm() {
                           setForgotError('');
                           setForgotSuccess('');
                           try {
-                            const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                            const response = await fetch(`${apiBase}/api/auth/send-otp`, {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ username: forgotUsername, method: 'sms' })
@@ -669,7 +688,7 @@ function LoginForm() {
                     setForgotUserLoading(true);
                     setForgotUserError('');
                     try {
-                      const response = await fetch('http://localhost:5000/api/auth/forgot-username', {
+                      const response = await fetch(`${apiBase}/api/auth/forgot-username`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: forgotUserEmail })
@@ -729,7 +748,7 @@ function LoginForm() {
                     setForgotUserLoading(true);
                     setForgotUserError('');
                     try {
-                      const response = await fetch('http://localhost:5000/api/auth/verify-username-otp', {
+                      const response = await fetch(`${apiBase}/api/auth/verify-username-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: forgotUserEmail, otp: forgotUserOtp })
